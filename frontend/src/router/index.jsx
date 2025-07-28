@@ -20,6 +20,11 @@ import AllSupervisors from "../pages/AllSupervisors";
 import AllStudents from "../pages/AllStudents";
 import MyProfile from "../pages/MyProfile";
 
+// Supervisor subpages
+
+import MyProjectsSupervisor from "../pages/MyProjectsSupervisor";
+import MyProfileSupervisor from "../pages/MyProfileSupervisor";
+
 // ✅ Protected Reset Route
 function ProtectedResetRoute({ children }) {
   const email = localStorage.getItem("resetEmail");
@@ -148,6 +153,38 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+
+  // ✅ Supervisor Dashboard
+
+  {
+    path: "/supervisor/request",
+    element: (
+      <ProtectedRoute allowedRoles={["supervisor"]}>
+        <SupervisorDashboard/>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/supervisor/myprojects",
+    element: (
+      <ProtectedRoute allowedRoles={["supervisor"]}>
+        <MyProjectsSupervisor/>
+      </ProtectedRoute>
+    ),
+  },
+
+
+  {
+    path: "/supervisor/myprofile",
+    element: (
+      <ProtectedRoute allowedRoles={["supervisor"]}>
+        <MyProfileSupervisor/>
+      </ProtectedRoute>
+    ),
+  },
+
+
 ]);
 
 export default router;
