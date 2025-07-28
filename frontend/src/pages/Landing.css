@@ -1,0 +1,52 @@
+
+.landing-main {
+  width: 100%;
+  min-height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding-top: 100px; /* <--- key fix */
+  position: relative;
+  box-sizing: border-box;
+}
+
+
+.overlay {
+  width: 100%;
+  min-height: 100%;
+  background-color: transparent;  
+  color: white;
+  text-align: center;
+  padding: 3rem 2rem;
+  box-sizing: border-box;
+}
+
+.roles {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+  width: 100%;
+}
+
+.card {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 250px;
+  width: 100%;
+  max-width: 250px;
+  text-align: center;
+  color: #222;
+}
+
+.card img {
+  height: 80px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  margin-bottom: 1rem;
+}
+
