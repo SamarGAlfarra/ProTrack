@@ -1,0 +1,147 @@
+.supervisor-dashboard {
+  display: flex;
+  height: 100vh;
+  background: #f4f5f7; /* Light gray background */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.projects-container {
+  flex-grow: 1;
+  padding: 2rem 3rem;
+  background: #fff;
+}
+
+.projects-container h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filters select {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 2px solid #1c2c4c;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.project-limit {
+  margin-left: auto;
+  color: #444;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.project-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 2px solid #1c2c4c;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  background-color: #f9f9f9;
+}
+
+.project-title {
+  flex: 1;
+  text-decoration: underline;
+  font-weight: 500;
+  font-size: 16px;
+  color: #1c2c4c;
+}
+
+.status {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 1rem;
+  display: inline-block;
+  min-width: 80px;
+  text-align: center;
+}
+
+.status.available {
+  background-color: #f6e486;
+  color: #1c1c1c;
+}
+
+.status.reserved {
+  background-color: #f6a7a7;
+  color: #1c1c1c;
+}
+
+.status-dropdown {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 2px solid #1c2c4c;
+  font-size: 13px;
+  font-weight: 600;
+  background-color: #fff;
+  color: #1c1c1c;
+  min-width: 100px;
+  appearance: none;
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+}
+
+/* ✅ Apply visual status coloring during edit */
+.status-dropdown.available {
+  background-color: #f6e486;
+  border-color: #b9a133;
+}
+
+.status-dropdown.reserved {
+  background-color: #f6a7a7;
+  border-color: #c75555;
+}
+
+.icon-button {
+  width: 18px;
+  height: 18px;
+  margin-left: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.icon-button:hover {
+  transform: scale(1.1);
+}
+
+.add-project-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+.add-project-btn {
+  padding: 10px 24px;
+  background-color: #f6d642;
+  color: #1c1c1c;
+  border: 2px solid #1c1c1c;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.add-project-btn:hover {
+  background-color: #f5c818;
+}
