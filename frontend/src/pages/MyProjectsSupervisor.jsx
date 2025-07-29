@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import SupervisorSideBar from '../components/SupervisorSideBar';
 import './MyProjects.css';
 
@@ -6,30 +7,12 @@ import editIcon from '../assets/edit.png';
 import trashIcon from '../assets/trash.png';
 
 const MyProjects = () => {
-  const [projects, setProjects] = useState([
-    { title: 'Restaurant Website', status: 'Available', isEditing: false },
-    { title: 'Mobile App', status: 'Available', isEditing: false },
-    { title: 'Mobile App', status: 'Reserved', isEditing: false },
-    { title: 'Mobile App', status: 'Reserved', isEditing: false },
+  const [projects] = useState([
+    { id: 1, title: 'Restaurant Website', status: 'Available' },
+    { id: 2, title: 'Mobile App', status: 'Available' },
+    { id: 3, title: 'Mobile App', status: 'Reserved' },
+    { id: 4, title: 'Mobile App', status: 'Reserved' },
   ]);
-
-  // Start editing on click
-  const enableEdit = (index) => {
-    setProjects((prev) =>
-      prev.map((p, i) =>
-        i === index ? { ...p, isEditing: true } : { ...p, isEditing: false }
-      )
-    );
-  };
-
-  // Save status and exit edit mode
-  const updateStatus = (index, newStatus) => {
-    setProjects((prev) =>
-      prev.map((p, i) =>
-        i === index ? { ...p, status: newStatus, isEditing: false } : p
-      )
-    );
-  };
 
   return (
     <div className="supervisor-dashboard">
@@ -51,43 +34,29 @@ const MyProjects = () => {
         </div>
 
         <div className="project-list">
-          {projects.map((project, index) => (
-            <div className="project-item" key={index}>
-              <span className="project-title">{project.title}</span>
+          {projects.map((project) => (
+            <div className="project-item" key={project.id}>
+              <Link to={`/supervisor/myproject/${project.id}`} className="project-title">
+                {project.title}
+              </Link>
 
-              {project.isEditing ? (
-                <select
-                  value={project.status}
-                  onChange={(e) => updateStatus(index, e.target.value)}
-                  className={`status-dropdown ${project.status.toLowerCase()}`}
-                  autoFocus
-                >
-                  <option value="Available">Available</option>
-                  <option value="Reserved">Reserved</option>
-                </select>
-              ) : (
-                <span className={`status ${project.status.toLowerCase()}`}>
-                  {project.status}
-                </span>
-              )}
+              <span className={`status ${project.status.toLowerCase()}`}>
+                {project.status}
+              </span>
 
-              <img
-                src={editIcon}
-                alt="Edit"
-                className="icon-button"
-                onClick={() => enableEdit(index)}
-              />
-              <img
-                src={trashIcon}
-                alt="Delete"
-                className="icon-button"
-              />
+              <Link to={`/supervisor/editproject/${project.id}`}>
+                <img src={editIcon} alt="Edit" className="icon-button" />
+              </Link>
+
+              <img src={trashIcon} alt="Delete" className="icon-button" />
             </div>
           ))}
         </div>
 
         <div className="add-project-wrapper">
-          <button className="add-project-btn">Add Project</button>
+          <Link to="/supervisor/addproject">
+            <button className="add-project-btn">Add Project</button>
+          </Link>
         </div>
       </div>
     </div>

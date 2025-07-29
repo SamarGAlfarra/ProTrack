@@ -1,7 +1,7 @@
 .supervisor-dashboard {
   display: flex;
   height: 100vh;
-  background: #f4f5f7; /* Light gray background */
+  background: #f4f5f7;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
@@ -18,26 +18,29 @@
   color: #333;
 }
 
+/* 👇 Updated filters for compact styling */
 .filters {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   margin-bottom: 1rem;
 }
 
 .filters select {
-  padding: 6px 12px;
-  border-radius: 20px;
+  padding: 4px 12px;
+  border-radius: 16px;
   border: 2px solid #1c2c4c;
-  background: #fff;
-  font-size: 14px;
+  background: #f8f8f8;
+  font-size: 13px;
   cursor: pointer;
+  width: 80px;
+  min-width: 120px;
 }
 
 .project-limit {
   margin-left: auto;
   color: #444;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
 }
 
@@ -55,13 +58,13 @@
   border-radius: 12px;
   padding: 0.75rem 1rem;
   background-color: #f9f9f9;
+  gap: 1rem;
 }
 
 .project-title {
   flex: 1;
-  text-decoration: underline;
-  font-weight: 500;
   font-size: 16px;
+  text-decoration: underline;
   color: #1c2c4c;
 }
 
@@ -70,8 +73,6 @@
   border-radius: 20px;
   font-size: 13px;
   font-weight: 600;
-  margin: 0 1rem;
-  display: inline-block;
   min-width: 80px;
   text-align: center;
 }
@@ -101,7 +102,6 @@
   background-size: 12px;
 }
 
-/* ✅ Apply visual status coloring during edit */
 .status-dropdown.available {
   background-color: #f6e486;
   border-color: #b9a133;

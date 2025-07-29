@@ -21,9 +21,9 @@ import AllStudents from "../pages/AllStudents";
 import MyProfile from "../pages/MyProfile";
 
 // Supervisor subpages
-
 import MyProjectsSupervisor from "../pages/MyProjectsSupervisor";
 import MyProfileSupervisor from "../pages/MyProfileSupervisor";
+import AddProject from "../pages/AddProject"; // ✅ IMPORTED CORRECTLY
 
 // ✅ Protected Reset Route
 function ProtectedResetRoute({ children }) {
@@ -41,7 +41,7 @@ function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (!user.is_approved) {
-    return <Navigate to="/" />; // Or a "Pending Approval" screen
+    return <Navigate to="/" />;
   }
 
   if (!allowedRoles.includes(user.role)) {
@@ -94,6 +94,16 @@ const router = createBrowserRouter([
     ),
   },
 
+  // ✅ Supervisor: Add Project (FIXED)
+  {
+    path: "/supervisor/addproject",
+    element: (
+      <ProtectedRoute allowedRoles={["supervisor"]}>
+        <AddProject />
+      </ProtectedRoute>
+    ),
+  },
+
   // ✅ Admin Dashboard
   {
     path: "/admin-dashboard",
@@ -104,7 +114,7 @@ const router = createBrowserRouter([
     ),
   },
 
-  // ✅ Admin Subpage - All Admins
+  // ✅ Admin Subpages
   {
     path: "/admin/admins",
     element: (
@@ -113,18 +123,14 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
-  // ✅ Admin Subpage - Allrequest
   {
     path: "/admin/request",
     element: (
       <ProtectedRoute allowedRoles={["admin"]}>
-        <AdminDashboard/>
+        <AdminDashboard />
       </ProtectedRoute>
     ),
   },
-
-  // ✅ Admin Subpage - All supevisors
   {
     path: "/admin/supervisors",
     element: (
@@ -133,62 +139,48 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
-  // ✅ Admin Subpage - All students
   {
     path: "/admin/students",
     element: (
       <ProtectedRoute allowedRoles={["admin"]}>
-        <AllStudents/>
+        <AllStudents />
       </ProtectedRoute>
     ),
   },
-
-  // ✅ Admin Subpage - My Profile
   {
     path: "/admin/myprofile",
     element: (
       <ProtectedRoute allowedRoles={["admin"]}>
-        <MyProfile/>
+        <MyProfile />
       </ProtectedRoute>
     ),
   },
 
-  // ✅ Supervisor Dashboard
-
+  // ✅ Supervisor Subpages
   {
     path: "/supervisor/request",
     element: (
       <ProtectedRoute allowedRoles={["supervisor"]}>
-        <SupervisorDashboard/>
+        <SupervisorDashboard />
       </ProtectedRoute>
     ),
   },
-
   {
     path: "/supervisor/myprojects",
     element: (
       <ProtectedRoute allowedRoles={["supervisor"]}>
-        <MyProjectsSupervisor/>
+        <MyProjectsSupervisor />
       </ProtectedRoute>
     ),
   },
-
-
   {
     path: "/supervisor/myprofile",
     element: (
       <ProtectedRoute allowedRoles={["supervisor"]}>
-        <MyProfileSupervisor/>
+        <MyProfileSupervisor />
       </ProtectedRoute>
     ),
   },
-
-
 ]);
 
 export default router;
-
-
-
-
