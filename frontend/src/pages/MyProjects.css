@@ -18,7 +18,7 @@
   color: #333;
 }
 
-/* 👇 Updated filters for compact styling */
+/* Filters */
 .filters {
   display: flex;
   align-items: center;
@@ -26,15 +26,23 @@
   margin-bottom: 1rem;
 }
 
-.filters select {
-  padding: 4px 12px;
-  border-radius: 16px;
-  border: 2px solid #1c2c4c;
-  background: #f8f8f8;
-  font-size: 13px;
-  cursor: pointer;
-  width: 80px;
-  min-width: 120px;
+/* Unified style for input and select */
+.filter-dropdown {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1.5px solid #1c2c4c;
+  background-color: #f5f6f7;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1c1c1c;
+  min-width: 140px;
+  height: 36px;
+  appearance: none;
+}
+
+/* Remove dropdown arrow from input */
+.filter-dropdown[type="text"] {
+  background-image: none;
 }
 
 .project-limit {
@@ -87,31 +95,6 @@
   color: #1c1c1c;
 }
 
-.status-dropdown {
-  padding: 6px 12px;
-  border-radius: 20px;
-  border: 2px solid #1c2c4c;
-  font-size: 13px;
-  font-weight: 600;
-  background-color: #fff;
-  color: #1c1c1c;
-  min-width: 100px;
-  appearance: none;
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 12px;
-}
-
-.status-dropdown.available {
-  background-color: #f6e486;
-  border-color: #b9a133;
-}
-
-.status-dropdown.reserved {
-  background-color: #f6a7a7;
-  border-color: #c75555;
-}
-
 .icon-button {
   width: 18px;
   height: 18px;
@@ -144,4 +127,23 @@
 
 .add-project-btn:hover {
   background-color: #f5c818;
+}
+
+.select-with-arrow {
+  position: relative;
+  display: inline-block;
+}
+
+.select-with-arrow select {
+  padding-right: 36px; /* Make space for the icon */
+}
+
+.arrow-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
 }

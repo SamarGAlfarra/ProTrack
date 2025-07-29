@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import SupervisorSideBar from '../components/SupervisorSideBar';
 import './AddProject.css';
 
@@ -9,6 +10,42 @@ const AddProject = () => {
   const [meetingLink, setMeetingLink] = useState('');
   const [summary, setSummary] = useState('');
   const [files, setFiles] = useState([]);
+
+  const { id } = useParams();
+  const isEditMode = !!id;
+
+  useEffect(() => {
+    if (isEditMode) {
+      // Simulated fetch - Replace with real API call
+      const dummyProjects = [
+        {
+          id: 1,
+          name: 'Restaurant Website',
+          meetingDay: 'Monday',
+          startTime: '10:00',
+          meetingLink: 'https://zoom.com/restaurant',
+          summary: 'Website for restaurant reservations',
+        },
+        {
+          id: 2,
+          name: 'Mobile App',
+          meetingDay: 'Wednesday',
+          startTime: '13:00',
+          meetingLink: 'https://zoom.com/app',
+          summary: 'App for e-commerce store',
+        },
+      ];
+
+      const project = dummyProjects.find((p) => p.id === parseInt(id));
+      if (project) {
+        setProjectName(project.name);
+        setMeetingDay(project.meetingDay);
+        setStartTime(project.startTime);
+        setMeetingLink(project.meetingLink);
+        setSummary(project.summary);
+      }
+    }
+  }, [id, isEditMode]);
 
   const handleFileChange = (e) => {
     const selected = Array.from(e.target.files);
@@ -36,14 +73,22 @@ const AddProject = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log({
+    const formData = {
       projectName,
       meetingDay,
       startTime,
       meetingLink,
       summary,
       files,
-    });
+    };
+
+    if (isEditMode) {
+      console.log('Updating Project:', id, formData);
+      // TODO: Replace with PUT request to API
+    } else {
+      console.log('Creating Project:', formData);
+      // TODO: Replace with POST request to API
+    }
   };
 
   return (
@@ -51,7 +96,7 @@ const AddProject = () => {
       <SupervisorSideBar />
 
       <div className="projects-container">
-        <h2>Add Project</h2>
+        <h2>{isEditMode ? 'Edit Project' : 'Add Project'}</h2>
 
         <form className="add-project-form" onSubmit={handleSubmit}>
           <div className="form-row">
@@ -73,18 +118,23 @@ const AddProject = () => {
               <option value="Monday">Monday</option>
               <option value="Tuesday">Tuesday</option>
               <option value="Wednesday">Wednesday</option>
-              
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
             </select>
 
             <select value={startTime} onChange={(e) => setStartTime(e.target.value)} required>
               <option value="">Start Time</option>
+              <option value="08:00">08:00</option>
               <option value="09:00">09:00</option>
               <option value="10:00">10:00</option>
-              <option value="11:00">10:00</option>
-              <option value="12:00">10:00</option>
-              <option value="1:00">10:00</option>
-              <option value="2:00">10:00</option>
-              <option value="3:00">10:00</option>
+              <option value="11:00">11:00</option>
+              <option value="12:00">12:00</option>
+              <option value="13:00">13:00</option>
+              <option value="14:00">14:00</option>
+              <option value="15:00">15:00</option>
+              <option value="16:00">16:00</option>
+              <option value="17:00">17:00</option>
+              <option value="18:00">18:00</option>
             </select>
           </div>
 
@@ -138,7 +188,9 @@ const AddProject = () => {
           </div>
 
           <div className="form-row right-align">
-            <button type="submit" className="add-project-btn">Save</button>
+            <button type="submit" className="add-project-btn">
+              {isEditMode ? 'Update' : 'Save'}
+            </button>
           </div>
         </form>
       </div>

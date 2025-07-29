@@ -5,6 +5,8 @@ import './MyProjects.css';
 
 import editIcon from '../assets/edit.png';
 import trashIcon from '../assets/trash.png';
+import dropdownArrow from '../assets/arrow.png';
+
 
 const MyProjects = () => {
   const [projects] = useState([
@@ -14,6 +16,23 @@ const MyProjects = () => {
     { id: 4, title: 'Mobile App', status: 'Reserved' },
   ]);
 
+  const [filters, setFilters] = useState({ subject: '', status: '' });
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const filteredProjects = projects.filter((project) => {
+    const matchSubject = filters.subject
+      ? project.title.toLowerCase().includes(filters.subject.toLowerCase())
+      : true;
+    const matchStatus = filters.status
+      ? project.status === filters.status
+      : true;
+    return matchSubject && matchStatus;
+  });
+
   return (
     <div className="supervisor-dashboard">
       <SupervisorSideBar />
@@ -22,23 +41,43 @@ const MyProjects = () => {
         <h2>My Projects</h2>
 
         <div className="filters">
-          <select>
-            <option value="">Subject</option>
-          </select>
-          <select>
-            <option value="">Status</option>
-            <option value="Available">Available</option>
-            <option value="Reserved">Reserved</option>
-          </select>
+          <input
+            type="text"
+            name="subject"
+            placeholder="Subject"
+            value={filters.subject}
+            onChange={handleFilterChange}
+            className="filter-dropdown"
+          />
+
+          <div className="select-with-arrow">
+            <select
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              className="filter-dropdown"
+            >
+              <option value="">Status</option>
+              <option value="Available">Available</option>
+              <option value="Reserved">Reserved</option>
+            </select>
+            <img src={dropdownArrow} alt="Dropdown Arrow" className="arrow-icon" />
+          </div>
+
+
           <span className="project-limit">Max. Number of projects is 5</span>
         </div>
 
         <div className="project-list">
-          {projects.map((project) => (
+          {filteredProjects.map((project) => (
             <div className="project-item" key={project.id}>
-              <Link to={`/supervisor/myproject/${project.id}`} className="project-title">
+              <Link
+                to={`/supervisor/projectdetails/${project.id}`}
+                className="project-title"
+              >
                 {project.title}
               </Link>
+
 
               <span className={`status ${project.status.toLowerCase()}`}>
                 {project.status}
