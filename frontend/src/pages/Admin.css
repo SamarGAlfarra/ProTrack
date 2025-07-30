@@ -1,0 +1,719 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  box-sizing: border-box;
+  overflow-y: auto;  /* ✅ Allows vertical scrolling */
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: inherit;
+}
+
+.admin-dashboard {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background-color: white;
+}
+
+.dashboard-content {
+  flex-grow: 1;
+  padding: 2.5vw;
+  background-color: white;
+  overflow-y: auto;
+  height: 100%;
+}
+
+/* Header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2vh;
+}
+
+.logout-icon {
+  width: 2vw;
+  height: 2vw;
+  cursor: pointer;
+  transition: transform 0.2s;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.logout-icon:hover {
+  transform: scale(1.1);
+}
+
+.welcome-message {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 2vh;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 1vh;
+  color: #444;
+}
+
+/* Table */
+.table-wrapper {
+  overflow-x: auto;
+  border: 2px solid #001D3D;
+  border-radius: 10px;
+  max-width: 100%;
+  background-color: #F5F7F8;
+}
+
+table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+th,
+td {
+  padding: 1vh 1vw;
+  font-size: 0.9rem;
+  height: 48px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #ccc;
+  text-align: left; /* Ensure all cells are left-aligned by default */
+}
+
+/* Fix the alignment of first column */
+th:first-child,
+td:first-child {
+  text-align: left;
+  padding-left: 1.5vw;
+}
+
+th:last-child,
+td:last-child {
+  text-align: center;
+  vertical-align: middle;
+}
+
+th {
+  background-color: #F5F7F8;
+  font-weight: bold;
+  color: #333;
+  border-bottom: 2px solid #001D3D;
+}
+
+.action-icons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5vw;
+}
+
+.action-icon {
+  width: 1.2vw;
+  height: 1.2vw;
+  min-width: 18px;
+  min-height: 18px;
+  object-fit: contain;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.action-icon:hover {
+  transform: scale(1.1);
+}
+
+.welcome-semester-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.semester-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 2px solid #001D3D;
+  border-radius: 8px;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 500;
+  background-color: white;
+}
+
+.semester-label {
+  color: #001D3D;
+}
+
+.semester-value {
+  font-weight: bold;
+  color: #001D3D;
+}
+
+.semester-input {
+  border: none;
+  outline: none;
+  font-weight: bold;
+  color: #001D3D;
+  font-size: 14px;
+  width: 80px;
+  background-color: transparent;
+}
+
+
+/* === Add Admin Button === */
+.add-admin-btn {
+  background-color: #ffcc00;
+  color: black;
+  padding: 6px 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.add-admin-btn:hover {
+  background-color: #e6b800;
+}
+
+.all-admins-container {
+  padding: 30px;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.my-profile-container {
+  max-width: 600px;
+}
+
+.profile-header {
+  display: flex;
+  align-items:left;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.profile-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+}
+
+.my-profile-container {
+  position: relative;
+  flex: 1;
+  padding: 30px;
+}
+
+/* تغيير موضع الاسم والصورة */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.profile-name-container {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.profile-input {
+  padding: 8px 10px;
+  border: 1px solid #001D3D;
+  border-radius: 6px;
+  font-size: 1rem;
+  width: 100%;
+  background-color: #F5F7F8;
+}
+
+/* زر Reset + Save في أسفل يمين الصفحة */
+.bottom-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 30px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+
+.reset-password-link {
+  color: #9c0d0d;
+  font-weight: bold;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.save-button {
+  background-color: #f2cd00;
+  border: none;
+  padding: 6px 20px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.save-button:hover {
+  background-color: #e6bd00;
+}
+
+
+.reset-password-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.reset-password-box {
+  background-color: white;
+  border: 2px solid #0b1e39;
+  border-radius: 16px;
+  padding: 30px 20px;
+  width: 320px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* العنوان */
+.reset-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reset-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: #000;
+}
+
+/* زر الإغلاق */
+.close-icon {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+
+/* تنسيق حقول الإدخال داخل المودال */
+.reset-password-box .profile-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 1px solid #ccc;
+  background-color: #F5F7F8;
+  font-size: 14px;
+  outline: none;
+}
+
+/* زر التأكيد */
+.reset-password-box .add-admin-btn {
+  background-color: #f2cd00;
+  color: black;
+  font-weight: bold;
+  padding: 8px 0;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.reset-password-box .add-admin-btn:hover {
+  background-color: #e6bd00;
+}
+
+.profile-image-wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.profile-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #001D3D;
+}
+
+.edit-photo-icon {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background-color: #fff;
+  border: 2px solid #ccc;
+  border-radius: 50%;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-photo-icon img {
+  width: 18px;
+  height: 18px;
+}
+
+.profile-name-input {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #001D3D;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  background-color: transparent;
+  outline: none;
+}
+
+/* --- Popup Overlay and Box --- */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.25);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.popup-box {
+  background-color: #fff;
+  border: 2px solid #143b63;
+  border-radius: 15px;
+  padding: 25px 25px 20px 25px;
+  width: 320px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: relative;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* --- Popup Header --- */
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.popup-header h3 {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0;
+  color: #333;
+}
+
+/* --- Close Icon --- */
+.close-icon {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+/* --- Form Styling --- */
+.popup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.popup-input {
+  padding: 8px 10px;
+  border: 1px solid #153c64;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+/* --- Add Button --- */
+.popup-submit-btn {
+  background-color: #f7c600;
+  border: 1px black;
+  border-radius: 20px;
+  padding: 8px 0;
+  font-weight: bold;
+  font-size: 15px;
+  color: black;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background-color 0.3s;
+}
+
+.popup-submit-btn:hover {
+  background-color: #ffdd44;
+}
+
+/* search */
+
+.column-search {
+  width: 90%;
+  padding: 4px 6px;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  outline: none;
+}
+
+.header-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px; /* Tighter spacing between name and icon */
+  font-weight: 600;
+}
+
+.search-icon {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.search-icon:hover {
+  opacity: 1;
+}
+
+/* === Overlay for background blur === */
+.team-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.25);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* === Main popup box === */
+.team-popup-box {
+  background: #ffffff;
+  border: 2px solid #003366;
+  border-radius: 16px;
+  padding: 20px 20px 10px;
+  width: 380px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  font-family: 'Segoe UI', sans-serif;
+  position: relative;
+}
+
+/* === Popup header === */
+.team-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  font-size: 18px;
+  color: #003366;
+  margin-bottom: 15px;
+}
+
+/* === Close (X) button === */
+.team-popup-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #cc0000;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* === Table styling inside popup === */
+.team-popup-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #003366;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.team-popup-table th,
+.team-popup-table td {
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid #cccccc;
+}
+
+.team-popup-table thead {
+  background-color: #f5faff;
+  font-weight: 600;
+}
+
+.team-popup-table tr:last-child td {
+  border-bottom: none;
+}
+
+.clickable-name {
+  color: #003366;
+  font-weight: bold;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.status-badge {
+  font-weight: bold;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  display: inline-block;
+  min-width: 80px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.status-badge.approved {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-badge.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+
+}
+
+
+.search-container {
+  position: relative;
+  width: 100%;
+}
+
+.popup-input.with-icon {
+  padding-right: 32px; /* space for icon */
+}
+
+.search-icon-inside {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+  cursor: pointer;
+}
+.team-name-display {
+  font-size: 18px;
+  font-weight: 500;
+  padding: 6px 16px;
+  background-color: #f7f7f7;
+  border: 1px solid #112244;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  color: #112244;
+}
+.team-name-display {
+  font-size: 18px;
+  font-weight: 500;
+  padding: 12px 16px;
+  background-color: #f7f7f7;
+  border: 1px solid #112244;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  color: #112244;
+}
+
+.search-container {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.search-container .popup-input {
+  width: 100%;
+  padding-right: 40px; /* space for icon */
+}
+
+.search-icon-inside {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.table-wrapper {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.team-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.team-table th, .team-table td {
+  border: 1px solid #ccc;
+  padding: 10px;
+  text-align: left;
+}
+
+.icon-cell {
+  text-align: center;
+}
+
+.action-icon {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.save-button-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+

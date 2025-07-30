@@ -1,0 +1,353 @@
+.supervisor-dashboard {
+  display: flex;
+  height: 100vh;
+  background: #fff;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.project-details-container {
+  flex-grow: 1;
+  padding: 30px;
+}
+
+.project-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+/* POSTS */
+.posts-section {
+  height: 180px; /* Fixed height */
+  overflow-y: auto;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 6px;
+}
+
+.posts-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.posts-section::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 10px;
+}
+
+
+.post {
+  border: 2px solid #1c2c4c;
+  border-radius: 12px;
+  padding: 10px;
+  position: relative;
+  background: #fff;
+}
+
+.post-author {
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.post-text {
+  font-size: 13px;
+}
+
+.post-timestamp {
+  font-size: 10px;
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  color: gray;
+}
+
+/* ADD UPDATE */
+.add-update {
+  display: flex;
+  align-items: center;
+  border: 2px solid #1c2c4c;
+  border-radius: 20px;
+  padding: 6px 12px;
+  margin-bottom: 20px;
+  max-width: 600px;
+}
+
+.add-update input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  padding: 6px;
+}
+
+.add-update img {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+
+/* BOTTOM SECTION */
+.bottom-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+/* TEAM INFO */
+.team-info {
+  flex: 1;
+}
+
+.team-title {
+  margin-bottom: 2px;
+}
+
+.team-code {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+/* TEAM TABLE */
+.team-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: #F5F7F8;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  border: .5px solid #001D3D;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.team-table th,
+.team-table td {
+  padding: 1vh 1vw;
+  font-size: 0.9rem;
+  height: 48px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  border: none;
+}
+
+.team-table tr:not(:last-child) td {
+  border-bottom: 1px solid #ccc;
+}
+
+.team-table th {
+  background-color: #F5F7F8;
+  font-weight: bold;
+  color: #333;
+  border-bottom: 2px solid #001D3D;
+}
+
+.team-table thead tr:first-child th:first-child {
+  border-top-left-radius: 10px;
+}
+.team-table thead tr:first-child th:last-child {
+  border-top-right-radius: 10px;
+}
+.team-table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 10px;
+}
+.team-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 10px;
+}
+
+/* TASKS */
+.tasks-box {
+  width: 260px;
+  border: 2px solid #003566;
+  border-radius: 16px;
+  padding: 14px 12px;
+  background: #fff;
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tasks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.add-task-icon {
+  width: 40px;
+  height: 40px;
+  padding: 4px;
+  cursor: pointer;
+}
+
+/* Scrollable list inside box */
+.tasks-list {
+  max-height: 250px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.tasks-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tasks-list::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 10px;
+}
+
+/* Task Item */
+.task {
+  border: 2px solid #003566;
+  border-radius: 30px;
+  padding: 10px 16px;
+  background: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 60px;
+  margin: 6px 0;
+}
+
+.task-left {
+  font-weight: bold;
+  font-size: 14px;
+  color: #003566;
+}
+
+.task-right {
+  text-align: right;
+  font-size: 12px;
+  color: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.task-title {
+  margin: 0;
+}
+
+.task-status,
+.task-due {
+  margin: 0;
+}
+
+/* Popup Overlay */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.25);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+/* Popup Box */
+.popup-box {
+  background: white;
+  border: 2px solid #003566;
+  border-radius: 16px;
+  padding: 20px;
+  width: 340px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* Popup Header */
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.popup-header h3 {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.popup-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: red;
+  cursor: pointer;
+}
+
+/* Popup Inputs */
+.popup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.popup-input,
+.popup-textarea {
+  border: 2px solid #003566;
+  border-radius: 16px;
+  padding: 10px 12px;
+  font-size: 14px;
+  width: 100%;
+  resize: none;
+}
+
+.popup-deadline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.calendar-icon {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+
+/* File input */
+.popup-file {
+  font-size: 14px;
+}
+
+/* Save Button */
+.popup-save {
+  background-color: #FFD60A;
+  border: none;
+  border-radius: 30px;
+  padding: 10px;
+  font-weight: bold;
+  font-size: 16px;
+  color: #000;
+  cursor: pointer;
+}
+
+.popup-close {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.calendar-wrapper {
+  position: absolute;
+  top: 50%;
+  left: calc(50% + 200px); /* adjust this distance as needed */
+  transform: translateY(-50%);
+  z-index: 1000;
+}
+
+

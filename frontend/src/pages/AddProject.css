@@ -1,0 +1,173 @@
+/* Layout styles */
+.supervisor-dashboard {
+  display: flex;
+  height: 100vh;
+  background: #f4f5f7;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.projects-container {
+  flex-grow: 1;
+  padding: 2rem 3rem;
+  background-color: #ffffff;
+}
+
+.projects-container h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.add-project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+.form-row label {
+  font-weight: 600;
+  min-width: 120px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+input[type="text"],
+input[type="url"],
+textarea,
+select {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #1c2c4c;
+  border-radius: 12px;
+  font-size: 14px;
+  background-color: #f8f8f8;
+  min-width: 180px;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 140px;
+}
+
+.add-project-btn {
+  align-self: flex-end;
+  padding: 10px 24px;
+  background-color: #f6d642;
+  color: #1c1c1c;
+  border: 2px solid #1c1c1c;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.add-project-btn:hover {
+  background-color: #f5c818;
+}
+
+.form-row.vertical {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.form-row.right-align {
+  justify-content: flex-end;
+}
+
+/* Hide the native file input */
+.hidden-file-input {
+  display: none;
+}
+
+/* Custom Choose File button */
+.file-choose-btn {
+  font-size: 14px;
+  border: 2px solid #1c2c4c;
+  border-radius: 20px;
+  padding: 6px 12px;
+  background: white;
+  color: #1c2c4c;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* File names displayed below the button */
+.file-names-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+
+.file-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+/* Layout for file input and label */
+.file-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Hide default file input */
+.hidden-file-input {
+  display: none;
+}
+
+/* Custom button style */
+.file-choose-btn {
+  font-size: 14px;
+  border: 2px solid #1c2c4c;
+  border-radius: 20px;
+  padding: 6px 12px;
+  background: white;
+  color: #1c2c4c;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* File preview section */
+.file-preview {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.file-icon-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.file-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.file-link {
+  font-weight: 600;
+  font-size: 14px;
+  color: #000;
+}
+
+.no-file-text {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}

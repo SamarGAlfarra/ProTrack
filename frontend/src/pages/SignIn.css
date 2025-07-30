@@ -1,0 +1,183 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Caslon+Text&display=swap');
+
+body, html {
+  height: 100%;
+  margin: 0;
+  font-family: 'Libre Caslon Text', serif;
+  background: url("../assets/back_ground.png") no-repeat center center fixed;
+  background-image: none !important;
+  background-size: cover;
+}
+
+.signin-container {
+  background-image: url("../assets/back_ground.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.signin-box {
+  background-color: white;
+  padding: 2rem 3rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+
+.signin-logo {
+  height: 60px;
+  margin-bottom: 0.5rem;
+}
+
+.brand {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #0c1b4d;
+  margin-bottom: 1rem;
+}
+
+.signin-title {
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+  color: #0c1b4d;
+}
+
+.signin-form input {
+  width: 100%;
+  padding: 0.6rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+.signin-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.forgot {
+  color: #aa0e0e;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.signin-btn {
+  background-color: #0c1b4d;
+  color: white;
+  padding: 0.6rem;
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.signup-text {
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.signup-link {
+  color: #aa0e0e;
+  text-decoration: none;
+  font-weight: bold;
+}
+.signin-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #0c1b4d;
+  font-weight: normal;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.remember-me input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  vertical-align: middle;
+  accent-color: #0c1b4d; /* Modern browsers */
+}
+
+.forgot {
+  color: #aa0e0e;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.signin-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.signin-logo {
+  height: 60px; /* or 80px if you want it larger */
+  margin-right: 0.5rem;
+}
+
+.brand-text {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #0c1b4d;
+  font-family: 'Libre Caslon Text', serif;
+}
+
+.signin-form select {
+  width: 100%;
+  padding: 0.6rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 1rem;
+  background-color: white;
+  color: #757575; /* MATCH TEXT COLOR TO OTHER INPUTS */
+
+  /* Custom arrow styling */
+  background-image: url('../assets/arrow.png');
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 16px;
+
+  /* Hide native arrow in some browsers */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  padding-right: 2.5rem; /* Avoid text overlap with arrow */
+  box-sizing: border-box;
+}
+
+.error-text {
+  color: red;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+
+
+
+
