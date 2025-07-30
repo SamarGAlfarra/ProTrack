@@ -599,10 +599,121 @@ th {
   cursor: pointer;
 }
 
+.status-badge {
+  font-weight: bold;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  display: inline-block;
+  min-width: 80px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.status-badge.approved {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-badge.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+
+}
 
 
+.search-container {
+  position: relative;
+  width: 100%;
+}
 
+.popup-input.with-icon {
+  padding-right: 32px; /* space for icon */
+}
 
+.search-icon-inside {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+  cursor: pointer;
+}
+.team-name-display {
+  font-size: 18px;
+  font-weight: 500;
+  padding: 6px 16px;
+  background-color: #f7f7f7;
+  border: 1px solid #112244;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  color: #112244;
+}
+.team-name-display {
+  font-size: 18px;
+  font-weight: 500;
+  padding: 12px 16px;
+  background-color: #f7f7f7;
+  border: 1px solid #112244;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  color: #112244;
+}
 
+.search-container {
+  position: relative;
+  margin-bottom: 12px;
+}
 
+.search-container .popup-input {
+  width: 100%;
+  padding-right: 40px; /* space for icon */
+}
+
+.search-icon-inside {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.table-wrapper {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.team-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.team-table th, .team-table td {
+  border: 1px solid #ccc;
+  padding: 10px;
+  text-align: left;
+}
+
+.icon-cell {
+  text-align: center;
+}
+
+.action-icon {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.save-button-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
 
