@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom'; // ✅ added useNavigate
 import SupervisorSideBar from '../components/SupervisorSideBar';
 import Calendar from '../components/Calendar';
 import './ProjectDetails.css';
@@ -11,6 +11,7 @@ import closeIcon from '../assets/xbutton.png';
 
 const ProjectDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate(); // ✅ initialize navigate
 
   const [posts, setPosts] = useState([
     {
@@ -57,7 +58,7 @@ const ProjectDetails = () => {
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     }).replace(',', '');
     setDeadline(formatted);
   };
@@ -153,7 +154,12 @@ const ProjectDetails = () => {
 
             <div className="tasks-list">
               {[1, 2, 3, 4, 5].map((num) => (
-                <div className="task" key={num}>
+                <div
+                  className="task"
+                  key={num}
+                  onClick={() => navigate(`/supervisor/taskdetails/${num}`)} // ✅ navigate on click
+                  style={{ cursor: 'pointer' }} // ✅ pointer cursor
+                >
                   <div className="task-left">
                     <p className="task-title">Task {num}</p>
                   </div>
@@ -218,7 +224,6 @@ const ProjectDetails = () => {
                     />
                   </div>
                 )}
-
 
                 <textarea
                   placeholder="Subject"
