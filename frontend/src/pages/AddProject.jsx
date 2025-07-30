@@ -16,7 +16,6 @@ const AddProject = () => {
 
   useEffect(() => {
     if (isEditMode) {
-      // Simulated fetch - Replace with real API call
       const dummyProjects = [
         {
           id: 1,
@@ -49,26 +48,27 @@ const AddProject = () => {
 
   const handleFileChange = (e) => {
     const selected = Array.from(e.target.files);
-    const validFiles = selected.filter(file =>
-      ['application/pdf', 'text/plain'].includes(file.type)
-    );
 
-    if (validFiles.length + files.length > 2) {
-      alert('You can only upload a maximum of 2 files.');
+    if (selected.length + files.length > 5) {
+      alert('You can only upload a maximum of 5 files.');
       return;
     }
 
-    setFiles(validFiles);
+    setFiles(prev => [...prev, ...selected]);
   };
 
   const getFileIcon = (fileName) => {
     const ext = fileName.split('.').pop().toLowerCase();
-    if (ext === 'pdf') {
-      return 'https://cdn-icons-png.flaticon.com/512/337/337946.png';
-    } else if (ext === 'txt') {
-      return 'https://cdn-icons-png.flaticon.com/512/3022/3022255.png';
-    }
-    return '';
+    const icons = {
+      pdf: 'https://cdn-icons-png.flaticon.com/512/337/337946.png',
+      txt: 'https://cdn-icons-png.flaticon.com/512/3022/3022255.png',
+      doc: 'https://cdn-icons-png.flaticon.com/512/281/281760.png',
+      docx: 'https://cdn-icons-png.flaticon.com/512/281/281760.png',
+      jpg: 'https://cdn-icons-png.flaticon.com/512/136/136524.png',
+      png: 'https://cdn-icons-png.flaticon.com/512/136/136524.png',
+      default: 'https://cdn-icons-png.flaticon.com/512/716/716784.png',
+    };
+    return icons[ext] || icons['default'];
   };
 
   const handleSubmit = (e) => {
@@ -166,7 +166,7 @@ const AddProject = () => {
                 type="file"
                 id="fileUpload"
                 className="hidden-file-input"
-                accept=".pdf,.txt"
+                accept="*"
                 multiple
                 onChange={handleFileChange}
               />
