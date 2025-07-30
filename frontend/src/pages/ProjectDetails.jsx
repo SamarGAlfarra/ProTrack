@@ -33,7 +33,7 @@ const ProjectDetails = () => {
   const [taskTitle, setTaskTitle] = useState('');
   const [deadline, setDeadline] = useState('');
   const [subject, setSubject] = useState('');
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState([]);
 
   const handleSend = () => {
     if (newPost.trim() === '') return;
@@ -48,7 +48,7 @@ const ProjectDetails = () => {
         minute: '2-digit',
       }).replace(',', ''),
     };
-    setPosts([...posts, newMessage]);
+    setPosts([newMessage,...posts]);
     setNewPost('');
   };
 
@@ -107,37 +107,38 @@ const ProjectDetails = () => {
             <p className="team-code">Team’s Code : ABC1234</p>
 
             <div className="table-wrapper">
-              <table className="team-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Student Name</th>
-                    <th>Student ID</th>
-                    <th>Final Grade</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>1</td>
-                    <td>Example Name</td>
-                    <td>123456</td>
-                    <td>A+</td>
-                  </tr>
-                  <tr>
-                    <td>2</td>
-                    <td>Another Name</td>
-                    <td>654321</td>
-                    <td>A</td>
-                  </tr>
-                  <tr>
-                    <td>3</td>
-                    <td>Third Member</td>
-                    <td>112233</td>
-                    <td>B+</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Student Name</th>
+                  <th>Student ID</th>
+                  <th>Final Grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>Example Name</td>
+                  <td>123456</td>
+                  <td>A+</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>Another Name</td>
+                  <td>654321</td>
+                  <td>A</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>Third Member</td>
+                  <td>112233</td>
+                  <td>B+</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           </div>
 
           {/* Task List */}
@@ -233,10 +234,18 @@ const ProjectDetails = () => {
                 />
 
                 <input
-                  type="file"
-                  onChange={(e) => setFile(e.target.files[0])}
-                  className="popup-file"
-                />
+                type="file"
+                multiple
+                onChange={(e) => setFile([...e.target.files].slice(0, 5))}
+                className="popup-file"
+              />
+              {file.length > 0 && (
+                <ul className="file-list">
+                  {file.map((f, index) => (
+                    <li key={index}>{f.name}</li>
+                  ))}
+                </ul>
+              )}
 
                 <button className="popup-save">Save</button>
               </div>

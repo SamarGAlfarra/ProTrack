@@ -218,46 +218,9 @@ const Calendar = ({ onDateTimeSelect, onClear, onDone }) => {
           placeholder="DD.MM.YYYY, HH:MM"
         />
         {selectedDate && (
-          <button
-            onClick={() => setShowTimePicker(!showTimePicker)}
-            className="time-toggle-button"
-          >
             <Clock size={14} />
-          </button>
         )}
       </div>
-
-      {/* Time picker */}
-      {showTimePicker && (
-        <div className="time-picker">
-          <div className="time-picker-label">Set Time</div>
-          <div className="time-picker-controls">
-            <select
-              value={selectedHour}
-              onChange={(e) => handleTimeChange(parseInt(e.target.value), selectedMinute)}
-              className="time-select"
-            >
-              {hours.map(hour => (
-                <option key={hour} value={hour}>
-                  {hour.toString().padStart(2, '0')}
-                </option>
-              ))}
-            </select>
-            <span className="time-separator">:</span>
-            <select
-              value={selectedMinute}
-              onChange={(e) => handleTimeChange(selectedHour, parseInt(e.target.value))}
-              className="time-select"
-            >
-              {minutes.map(minute => (
-                <option key={minute} value={minute}>
-                  {minute.toString().padStart(2, '0')}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
 
       {/* Action buttons */}
       <div className="action-buttons">

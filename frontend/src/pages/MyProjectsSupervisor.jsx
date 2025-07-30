@@ -44,7 +44,7 @@ const MyProjects = () => {
           <input
             type="text"
             name="subject"
-            placeholder="Subject"
+            placeholder="Search by Subject"
             value={filters.subject}
             onChange={handleFilterChange}
             className="filter-dropdown"

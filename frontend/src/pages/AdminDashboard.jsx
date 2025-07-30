@@ -3,7 +3,6 @@ import AdminSidebar from '../components/AdminSideBar';
 import './Admin.css';
 import approveIcon from "../assets/approveicon.png";
 import rejectIcon from "../assets/rejecticon.png";
-import logoutIcon from "../assets/logout.png";
 import searchIcon from "../assets/search.png";
 
 const AdminDashboard = () => {

@@ -84,7 +84,7 @@
 }
 
 .calendar-day-selected {
-  background-color: #F4CE14;
+  background-color: #FFD60A;
   color: #001D3D;
   font-weight: 500;
 }
@@ -134,7 +134,7 @@
 
 .date-input:focus {
   background-color: rgba(75, 85, 99, 0.2);
-  outline: 2px solid #F4CE14;
+  outline: 2px solid #FFD60A;
   outline-offset: 2px;
 }
 
@@ -186,7 +186,7 @@
 }
 
 .time-select:focus {
-  outline: 2px solid #F4CE14;
+  outline: 2px solid #FFD60A;
   outline-offset: 2px;
 }
 
@@ -222,7 +222,7 @@
 }
 
 .done-button {
-  background-color: #F4CE14;
+  background-color: #FFD60A;
   color: #001D3D;
 }
 

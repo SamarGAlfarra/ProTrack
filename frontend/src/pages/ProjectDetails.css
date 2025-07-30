@@ -2,7 +2,7 @@
   display: flex;
   height: 100vh;
   background: #fff;
-  font-family: 'Segoe UI', sans-serif;
+  font-family: 'Libre Caslon Text', serif;
 }
 
 .project-details-container {
@@ -18,7 +18,7 @@
 
 /* POSTS */
 .posts-section {
-  height: 180px; /* Fixed height */
+  height: 180px;
   overflow-y: auto;
   margin-bottom: 12px;
   display: flex;
@@ -36,13 +36,12 @@
   border-radius: 10px;
 }
 
-
 .post {
   border: 2px solid #1c2c4c;
   border-radius: 12px;
   padding: 10px;
   position: relative;
-  background: #fff;
+  background: white;
 }
 
 .post-author {
@@ -71,6 +70,7 @@
   padding: 6px 12px;
   margin-bottom: 20px;
   max-width: 600px;
+  background-color: white;
 }
 
 .add-update input {
@@ -79,12 +79,14 @@
   outline: none;
   font-size: 13px;
   padding: 6px;
+  background-color: white;
 }
 
 .add-update img {
   width: 24px;
   height: 24px;
   cursor: pointer;
+
 }
 
 /* BOTTOM SECTION */
@@ -98,6 +100,7 @@
 /* TEAM INFO */
 .team-info {
   flex: 1;
+  font-family: 'Libre Caslon Text', serif;
 }
 
 .team-title {
@@ -109,62 +112,59 @@
   margin-bottom: 10px;
 }
 
-/* TEAM TABLE */
-.team-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  background-color: #F5F7F8;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  border: .5px solid #001D3D;
+/* Table Wrapper */
+.table-wrapper {
+  overflow-x: auto;
+  border: 2px solid #001D3D;
   border-radius: 10px;
-  overflow: hidden;
+  max-width: 100%;
+  background-color: #F5F7F8;
+  margin-top: 10px;
+  font-family: 'Libre Caslon Text', serif;
 }
 
-.team-table th,
-.team-table td {
+/* Table Styling */
+.table-wrapper table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+  background-color: white;
+  font-family: 'Libre Caslon Text', serif;
+}
+
+.table-wrapper th,
+.table-wrapper td {
   padding: 1vh 1vw;
   font-size: 0.9rem;
   height: 48px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-align: left;
-  border: none;
-}
-
-.team-table tr:not(:last-child) td {
   border-bottom: 1px solid #ccc;
+  text-align: left;
 }
 
-.team-table th {
+.table-wrapper th:first-child,
+.table-wrapper td:first-child {
+  text-align: left;
+  padding-left: 1.5vw;
+}
+
+.table-wrapper th {
   background-color: #F5F7F8;
   font-weight: bold;
   color: #333;
   border-bottom: 2px solid #001D3D;
 }
 
-.team-table thead tr:first-child th:first-child {
-  border-top-left-radius: 10px;
-}
-.team-table thead tr:first-child th:last-child {
-  border-top-right-radius: 10px;
-}
-.team-table tbody tr:last-child td:first-child {
-  border-bottom-left-radius: 10px;
-}
-.team-table tbody tr:last-child td:last-child {
-  border-bottom-right-radius: 10px;
-}
-
 /* TASKS */
 .tasks-box {
-  width: 260px;
+  width: 400px;
   border: 2px solid #003566;
   border-radius: 16px;
   padding: 14px 12px;
-  background: #fff;
-  font-family: 'Segoe UI', sans-serif;
+  background: white;
+  font-family: 'Libre Caslon Text', serif;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -186,7 +186,6 @@
   cursor: pointer;
 }
 
-/* Scrollable list inside box */
 .tasks-list {
   max-height: 250px;
   overflow-y: auto;
@@ -205,12 +204,11 @@
   border-radius: 10px;
 }
 
-/* Task Item */
 .task {
   border: 2px solid #003566;
   border-radius: 30px;
   padding: 10px 16px;
-  background: white;
+  background: #F5F7F8;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -236,6 +234,7 @@
 
 .task-title {
   margin: 0;
+  text-decoration: underline; 
 }
 
 .task-status,
@@ -243,7 +242,7 @@
   margin: 0;
 }
 
-/* Popup Overlay */
+/* POPUP */
 .popup-overlay {
   position: fixed;
   top: 0;
@@ -257,7 +256,6 @@
   z-index: 999;
 }
 
-/* Popup Box */
 .popup-box {
   background: white;
   border: 2px solid #003566;
@@ -265,10 +263,9 @@
   padding: 20px;
   width: 340px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  font-family: 'Segoe UI', sans-serif;
+  font-family: 'Libre Caslon Text', serif;
 }
 
-/* Popup Header */
 .popup-header {
   display: flex;
   justify-content: space-between;
@@ -288,9 +285,10 @@
   font-size: 24px;
   color: red;
   cursor: pointer;
+  width: 24px;
+  height: 24px;
 }
 
-/* Popup Inputs */
 .popup-body {
   display: flex;
   flex-direction: column;
@@ -319,12 +317,10 @@
   cursor: pointer;
 }
 
-/* File input */
 .popup-file {
   font-size: 14px;
 }
 
-/* Save Button */
 .popup-save {
   background-color: #FFD60A;
   border: none;
@@ -336,18 +332,10 @@
   cursor: pointer;
 }
 
-.popup-close {
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-}
-
 .calendar-wrapper {
   position: absolute;
   top: 50%;
-  left: calc(50% + 200px); /* adjust this distance as needed */
+  left: calc(50% + 200px);
   transform: translateY(-50%);
   z-index: 1000;
 }
-
-

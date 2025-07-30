@@ -3,7 +3,7 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Libre Caslon Text', serif;
   box-sizing: border-box;
   overflow-y: auto;  /* ✅ Allows vertical scrolling */
   overflow-x: hidden;
@@ -696,7 +696,7 @@ th {
 }
 
 .team-table th, .team-table td {
-  border: 1px solid #ccc;
+  border: none;
   padding: 10px;
   text-align: left;
 }

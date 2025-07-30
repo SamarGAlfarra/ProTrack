@@ -9,15 +9,15 @@ import closeIcon from "../assets/xbutton.png"; // Use any red 'X' icon you have
 const SupervisorDashboard = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState('');
-  const [searchTerms, setSearchTerms] = useState({ userId: '', name: '', department: '', role: '' });
-  const [activeSearch, setActiveSearch] = useState({ userId: false, name: false, department: false, role: false });
+  const [searchTerms, setSearchTerms] = useState({ teamName: '', teamCode: '', ProjectName: '' });
+  const [activeSearch, setActiveSearch] = useState({ teamName: false, teamCode: false, ProjectName: false });
   const tableRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (tableRef.current && !tableRef.current.contains(event.target)) {
-        setSearchTerms({ userId: '', name: '', department: '', role: '' });
-        setActiveSearch({ userId: false, name: false, department: false, role: false });
+        setSearchTerms({ teamName: '', teamCode: '', ProjectName: '' });
+        setActiveSearch({ teamName: false, teamCode: false, ProjectName: false });
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -42,20 +42,18 @@ const SupervisorDashboard = () => {
   };
 
   const requests = [
-    { id: 1, userId: 'Power', name: 'XYZ1234', department: 'Computer Eng.', role: 'Student' },
-    { id: 2, userId: 'Flowers', name: 'XYZ1234', department: 'Business', role: 'Admin' },
-    { id: 3, userId: 'AI', name: 'XYZ1234', department: 'Literature', role: 'Supervisor' },
-    { id: 4, userId: 'ProTrack', name: 'XYZ1234', department: 'Physical Health', role: 'Student' },
+    { id: 1, teamName: 'Power', teamCode: 'XYZ1234', ProjectName: 'Computer Eng.' },
+    { id: 2, teamName: 'Flowers', teamCode: 'XYZ2345', ProjectName: 'Business' },
+    { id: 3, teamName: 'AI', teamCode: 'XYZ3456', ProjectName: 'Literature' },
+    { id: 4, teamName: 'ProTrack', teamCode: 'XYZ4567', ProjectName: 'Physical Health' },
   ];
 
   const filteredRequests = requests.filter(req =>
-    req.userId.toLowerCase().includes(searchTerms.userId) &&
-    req.name.toLowerCase().includes(searchTerms.name) &&
-    req.department.toLowerCase().includes(searchTerms.department) &&
-    req.role.toLowerCase().includes(searchTerms.role)
+    req.teamName.toLowerCase().includes(searchTerms.teamName) &&
+    req.teamCode.toLowerCase().includes(searchTerms.teamCode) &&
+    req.ProjectName.toLowerCase().includes(searchTerms.ProjectName)
   );
 
-  // Dummy team members
   const teamMembers = [
     { name: 'Student A', id: '202301' },
     { name: 'Student B', id: '202302' },
@@ -69,7 +67,7 @@ const SupervisorDashboard = () => {
 
       <div className="dashboard-content">
         <div className="dashboard-header">
-          <h2 className="welcome-message">Welcome Back, Ssre</h2>
+          <h2 className="welcome-message">Welcome Back, Supervisor</h2>
         </div>
 
         <h3 className="section-title">Incoming Sign Up Requests</h3>
@@ -80,26 +78,68 @@ const SupervisorDashboard = () => {
               <tr>
                 <th>#</th>
                 <th>
-                  {activeSearch.userId ? (
-                    <input type="text" placeholder="Search Team" className="column-search" onChange={(e) => handleSearchChange('userId', e.target.value)} autoFocus />
+                  {activeSearch.teamName ? (
+                    <input
+                      type="text"
+                      placeholder="Search Team"
+                      className="column-search"
+                      onChange={(e) => handleSearchChange('teamName', e.target.value)}
+                      autoFocus
+                    />
                   ) : (
                     <span className="header-label">
                       Team Name
-                      <img src={searchIcon} alt="Search" className="search-icon" onClick={() => toggleSearch('userId')} />
+                      <img
+                        src={searchIcon}
+                        alt="Search"
+                        className="search-icon"
+                        onClick={() => toggleSearch('teamName')}
+                      />
                     </span>
                   )}
                 </th>
                 <th>
-                  {activeSearch.name ? (
-                    <input type="text" placeholder="Search Code" className="column-search" onChange={(e) => handleSearchChange('name', e.target.value)} autoFocus />
+                  {activeSearch.teamCode ? (
+                    <input
+                      type="text"
+                      placeholder="Search Code"
+                      className="column-search"
+                      onChange={(e) => handleSearchChange('teamCode', e.target.value)}
+                      autoFocus
+                    />
                   ) : (
                     <span className="header-label">
-                      Team’s code
-                      <img src={searchIcon} alt="Search" className="search-icon" onClick={() => toggleSearch('name')} />
+                      Team’s Code
+                      <img
+                        src={searchIcon}
+                        alt="Search"
+                        className="search-icon"
+                        onClick={() => toggleSearch('teamCode')}
+                      />
                     </span>
                   )}
                 </th>
-                <th>Project Name</th>
+                <th>
+                  {activeSearch.ProjectName ? (
+                    <input
+                      type="text"
+                      placeholder="Search Project Name"
+                      className="column-search"
+                      onChange={(e) => handleSearchChange('ProjectName', e.target.value)}
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="header-label">
+                      Project Name
+                      <img
+                        src={searchIcon}
+                        alt="Search"
+                        className="search-icon"
+                        onClick={() => toggleSearch('ProjectName')}
+                      />
+                    </span>
+                  )}
+                </th>
                 <th>Approval State</th>
               </tr>
             </thead>
@@ -109,12 +149,12 @@ const SupervisorDashboard = () => {
                   <td>{index + 1}</td>
                   <td
                     className="clickable-name"
-                    onClick={() => handleTeamClick(req.userId)}
+                    onClick={() => handleTeamClick(req.teamName)}
                   >
-                    {req.userId}
+                    {req.teamName}
                   </td>
-                  <td>{req.name}</td>
-                  <td>{req.department}</td>
+                  <td>{req.teamCode}</td>
+                  <td>{req.ProjectName}</td>
                   <td className="action-icons">
                     <img src={approveIcon} alt="Approve" className="action-icon" />
                     <img src={rejectIcon} alt="Reject" className="action-icon" />
@@ -125,18 +165,17 @@ const SupervisorDashboard = () => {
           </table>
         </div>
 
-        {/* === Popup === */}
         {showPopup && (
           <div className="team-popup-overlay">
             <div className="team-popup-box">
               <div className="team-popup-header">
                 <span>{selectedTeam}</span>
                 <img
-                src={closeIcon}
-                alt="Close"
-                className="close-icon"
-                onClick={closePopup}
-              />
+                  src={closeIcon}
+                  alt="Close"
+                  className="close-icon"
+                  onClick={closePopup}
+                />
               </div>
               <table className="team-popup-table">
                 <thead>

@@ -28,6 +28,7 @@ import MyProfileSupervisor from "../pages/MyProfileSupervisor";
 import AddProject from "../pages/AddProject"; // ✅ IMPORTED CORRECTLY
 import ProjectDetails from "../pages/ProjectDetails";
 import CreateTeam from "../pages/CreateTeam";
+import TaskDetails from "../pages/TaskDetails";
 
 // ✅ Protected Reset Route
 function ProtectedResetRoute({ children }) {
@@ -218,6 +219,15 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedRoles={["supervisor"]}>
         <MyProfileSupervisor />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/supervisor/TaskDetails/:id",
+    element: (
+      <ProtectedRoute allowedRoles={["supervisor"]}>
+        <TaskDetails/>
       </ProtectedRoute>
     ),
   },

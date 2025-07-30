@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import SupervisorSideBar from '../components/SupervisorSideBar';
 import ViewSubmission from '../components/ViewSubmission';
-// import './TaskDetails.css';
+import './TaskDetails.css';
 
 const TaskDetails = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -26,8 +26,8 @@ const TaskDetails = () => {
       <SupervisorSideBar />
       <div className="project-details-container">
         <h2 className="project-title">Task 1</h2>
-        <div className="team-table-wrapper">
-          <table className="team-table">
+        <div className="table-wrapper">
+          <table>
             <thead>
               <tr>
                 <th>#</th>
@@ -44,10 +44,7 @@ const TaskDetails = () => {
                   <td>{student.name}</td>
                   <td>{student.id}</td>
                   <td>
-                    <button
-                      className="text-blue-600 underline hover:text-blue-800"
-                      onClick={() => handleViewSubmission(student)}
-                    >
+                    <button onClick={() => handleViewSubmission(student)}>
                       View Submission
                     </button>
                   </td>
