@@ -25,6 +25,7 @@ import MyProjectsSupervisor from "../pages/MyProjectsSupervisor";
 import MyProfileSupervisor from "../pages/MyProfileSupervisor";
 import AddProject from "../pages/AddProject"; // ✅ IMPORTED CORRECTLY
 import ProjectDetails from "../pages/ProjectDetails";
+import CreateTeam from "../pages/CreateTeam";
 
 // ✅ Protected Reset Route
 function ProtectedResetRoute({ children }) {
@@ -84,6 +85,15 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  
+ {
+  path: "/student/createteam",
+  element: (
+    <ProtectedRoute allowedRoles={["student"]}>
+      <CreateTeam />
+    </ProtectedRoute>
+  ),
+},
 
   // ✅ Supervisor Dashboard
   {
