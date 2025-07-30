@@ -47,8 +47,8 @@ const StudentSideBar = () => {
         )}
       </div>
 
-      <nav className="sidebar-nav">
-        <Link to="/student/request" className="sidebar-link">
+    <nav className="sidebar-nav">
+        <Link to="/student-dashboard" className="sidebar-link">
           <img src={homeIcon} alt="Home" className="icon" />
           {!isCollapsed && "Home"}
         </Link>
@@ -61,7 +61,7 @@ const StudentSideBar = () => {
           {!isCollapsed && "MyApplications"}
         </Link>
 
-        <Link to="/student/MyProfile" className="sidebar-link">
+        <Link to="/student/myProfile" className="sidebar-link">
           <img src={profileIcon} alt="profile" className="icon" />
           {!isCollapsed && "My Profile"}
         </Link>

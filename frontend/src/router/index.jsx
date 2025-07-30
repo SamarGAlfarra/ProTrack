@@ -1,5 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import MyProfileStudent from "../pages/MyProfileStudent";
+
 
 // Pages
 import Landing from "../pages/Landing";
@@ -94,6 +96,15 @@ const router = createBrowserRouter([
     </ProtectedRoute>
   ),
 },
+{
+    path: "/student/myprofile",
+    element: (
+      <ProtectedRoute allowedRoles={["student"]}>
+        <MyProfileStudent />
+      </ProtectedRoute>
+    ),
+  },
+
 
   // ✅ Supervisor Dashboard
   {
