@@ -27,8 +27,9 @@ import MyProjectsSupervisor from "../pages/MyProjectsSupervisor";
 import MyProfileSupervisor from "../pages/MyProfileSupervisor";
 import AddProject from "../pages/AddProject"; // ✅ IMPORTED CORRECTLY
 import ProjectDetails from "../pages/ProjectDetails";
-
 import TaskDetails from "../pages/TaskDetails";
+import CreateTeam from "../pages/CreateTeam";
+
 
 //Student subpages
 import CreateTeam from "../pages/CreateTeam";
