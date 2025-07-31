@@ -29,7 +29,7 @@ import AddProject from "../pages/AddProject"; // ✅ IMPORTED CORRECTLY
 import ProjectDetails from "../pages/ProjectDetails";
 import TaskDetails from "../pages/TaskDetails";
 import CreateTeam from "../pages/CreateTeam";
-import TaskDetails from "../pages/TaskDetails";
+
 
 // ✅ Protected Reset Route
 function ProtectedResetRoute({ children }) {
