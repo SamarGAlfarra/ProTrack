@@ -27,6 +27,7 @@ import MyProjectsSupervisor from "../pages/MyProjectsSupervisor";
 import MyProfileSupervisor from "../pages/MyProfileSupervisor";
 import AddProject from "../pages/AddProject"; // ✅ IMPORTED CORRECTLY
 import ProjectDetails from "../pages/ProjectDetails";
+import TaskDetails from "../pages/TaskDetails";
 import CreateTeam from "../pages/CreateTeam";
 import TaskDetails from "../pages/TaskDetails";
 
@@ -144,6 +145,14 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+  path: "/supervisor/taskdetails/:id", 
+  element: (
+    <ProtectedRoute allowedRoles={["supervisor"]}>
+      <TaskDetails />
+    </ProtectedRoute>
+  ),
+},
 
   // ✅ Admin Dashboard
   {
