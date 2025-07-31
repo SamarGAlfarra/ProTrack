@@ -145,14 +145,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  {
-  path: "/supervisor/taskdetails/:id", 
-  element: (
-    <ProtectedRoute allowedRoles={["supervisor"]}>
-      <TaskDetails />
-    </ProtectedRoute>
-  ),
-},
 
   // ✅ Admin Dashboard
   {
