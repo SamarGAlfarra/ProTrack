@@ -44,7 +44,7 @@
   font-size: 18px;
   font-weight: 700;
   color: #0a224e;
-  margin-bottom: 12px;
+  margin-bottom: 18px;
 }
 
 .submission-box {
@@ -66,10 +66,19 @@
 .grade-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: center; /* ✅ aligns vertically */
   margin-top: 10px;
   font-size: 14px;
+  position: relative;  /* ✅ keeps the close button absolutely placed */
 }
+
+.grade-score {
+  font-weight: bold;
+  color: #0a224e;
+  font-size: 15px;
+  margin-right: 24px; /* ✅ pushes it away from the close X */
+}
+
 
 .grade-input,
 .grade-total-input {
@@ -187,4 +196,15 @@
 .send-button img {
   width: 20px;
   height: 20px;
+}
+
+.grade-row {
+  margin-right: 24px; /* Add spacing below the title row */
+}
+
+.submission-box {
+  display: flex;
+  flex-direction: column;
+  align-items: right;
+  gap: 10px; /* adds space between file input and button */
 }

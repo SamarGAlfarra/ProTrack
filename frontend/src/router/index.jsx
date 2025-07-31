@@ -27,8 +27,12 @@ import MyProjectsSupervisor from "../pages/MyProjectsSupervisor";
 import MyProfileSupervisor from "../pages/MyProfileSupervisor";
 import AddProject from "../pages/AddProject"; // ✅ IMPORTED CORRECTLY
 import ProjectDetails from "../pages/ProjectDetails";
-import CreateTeam from "../pages/CreateTeam";
+
 import TaskDetails from "../pages/TaskDetails";
+
+//Student subpages
+import CreateTeam from "../pages/CreateTeam";
+import MyProjectsStudent from "../pages/MyProjectsStudent";
 
 // ✅ Protected Reset Route
 function ProtectedResetRoute({ children }) {
@@ -102,6 +106,15 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedRoles={["student"]}>
         <MyProfileStudent />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/student/myprojectsstudent",
+    element: (
+      <ProtectedRoute allowedRoles={["student"]}>
+        <MyProjectsStudent/>
       </ProtectedRoute>
     ),
   },

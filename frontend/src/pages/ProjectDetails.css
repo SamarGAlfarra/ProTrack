@@ -20,11 +20,14 @@
 .posts-section {
   height: 180px;
   overflow-y: auto;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding-right: 6px;
+  border: 2px solid #003566;
+  border-radius: 16px;
+  padding: 10px ;
 }
 
 .posts-section::-webkit-scrollbar {
@@ -66,10 +69,10 @@
   display: flex;
   align-items: center;
   border: 2px solid #1c2c4c;
-  border-radius: 20px;
+  border-radius: 12px;
   padding: 6px 12px;
+  margin: 4px;
   margin-bottom: 20px;
-  max-width: 600px;
   background-color: white;
 }
 
@@ -339,3 +342,266 @@
   transform: translateY(-50%);
   z-index: 1000;
 }
+
+.sidebar-btn {
+  display: block;
+  background-color: white;
+  color: #001D3D;
+  font-weight: bold;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.sidebar-btn:hover {
+  background-color: #FFD60A;
+  color: black;
+}
+
+/* Status badges */
+.status {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.status.submitted {
+  background-color: #FFD60A;
+  color: #000;
+}
+
+.status.late {
+  background-color: #FFB3B3;
+  color: #000;
+}
+
+.status.unsubmitted {
+  background-color: #FFEB99;
+  color: #000;
+}
+
+.join-button {
+  background-color: #FFD60A;
+  color: #000;
+  font-weight: bold;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.join-button:hover {
+  background-color: #e6c309;
+}
+
+/* Meeting */
+.meeting-section {
+  margin-bottom: 20px;
+}
+
+.meeting-title {
+  margin-bottom: 5px;
+}
+
+.meeting-box {
+  border: 2px solid #001D3D;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+}
+
+.join-button {
+  background-color: #FFD60A;
+  color: #000;
+  font-weight: bold;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.join-button:hover {
+  background-color: #e6c309;
+}
+
+/* Tasks and Grade */
+.tasks-grade-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.task-table {
+  max-width: 500px;
+}
+
+.final-grade {
+  font-weight: bold;
+  font-size: 18px;
+}
+
+/* Status Badges */
+.status {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.status.submitted {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status.late {  
+background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status.unsubmitted {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.tasks-grade-container {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tasks-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+  padding-right: 30px; /* Match your page padding for right alignment */
+  padding-left: 0;
+}
+
+
+
+.tasks-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.final-grade {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.task-table {
+  width: 100%;
+  max-width: 700px;
+}
+
+/* NEW: Compact scrollable tasks table */
+.tasks-scroll-table {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 2px solid #003566;
+  border-radius: 12px;
+  background: white;
+  margin-top: 10px;
+}
+
+.tasks-scroll-table::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tasks-scroll-table::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 6px;
+}
+
+.tasks-table {
+  min-width: 380px;
+  width: 100%;
+  table-layout: fixed; /* tighter layout */
+  border-collapse: collapse;
+  font-size: 14px;
+  font-family: 'Libre Caslon Text', serif;
+}
+
+.tasks-table th,
+.tasks-table td {
+  padding: 8px 10px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #ddd;
+}
+
+.tasks-table th {
+  background-color: #F5F7F8;
+  font-weight: bold;
+  color: #003566;
+  border-bottom: 2px solid #003566;
+}
+
+.tasks-table-wrapper {
+  max-height: 200px; /* You can adjust this height */
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 2px solid #003566;
+  border-radius: 10px;
+  background-color: white;
+}
+
+.tasks-table-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tasks-table-wrapper::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 6px;
+}
+
+.tasks-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.tasks-table th,
+.tasks-table td {
+  padding: 8px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #ddd;
+  font-size: 14px;
+}
+
+
+.tasks-table td:first-child {
+  text-decoration: underline;
+  color: #003566;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.tasks-table td:first-child:hover {
+  color: #001D3D;
+}
+
+
