@@ -52,14 +52,15 @@ const StudentSideBar = () => {
           <img src={homeIcon} alt="Home" className="icon" />
           {!isCollapsed && "Home"}
         </Link>
+         <Link to="/student/myApplications" className="sidebar-link">
+          <img src={applicationsIcon} alt="My Applications" className="icon" />
+          {!isCollapsed && "MyApplications"}
+        </Link>
         <Link to="/student/myprojectsstudent" className="sidebar-link">
           <img src={myprojectsIcon} alt="My Project" className="icon" />
           {!isCollapsed && "MyProject"}
         </Link>
-           <Link to="/student/myApplications" className="sidebar-link">
-          <img src={applicationsIcon} alt="My Applications" className="icon" />
-          {!isCollapsed && "MyApplications"}
-        </Link>
+
 
         <Link to="/student/myProfile" className="sidebar-link">
           <img src={profileIcon} alt="profile" className="icon" />

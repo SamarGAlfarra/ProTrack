@@ -71,7 +71,8 @@ const MyProjectsStudent = () => {
         <div className="meeting-section">
           <h3 className="meeting-title">Upcoming Meeting</h3>
           <div className="meeting-box">
-            <span>Discussion 1 &nbsp;&nbsp; Wednesday &nbsp; 14:00 → 16:00</span>
+            <span>Discussion 1 </span>
+            <span> Wednesday at &nbsp;14:00 </span>
             <button className="join-button">Join Meeting</button>
           </div>
         </div>

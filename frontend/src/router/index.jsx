@@ -32,6 +32,7 @@ import TaskDetails from "../pages/TaskDetails";
 //Student subpages
 import CreateTeam from "../pages/CreateTeam";
 import MyProjectsStudent from "../pages/MyProjectsStudent";
+import MyApplicationsStudent from '../pages/MyApplicationsStudent';
 
 // ✅ Protected Reset Route
 function ProtectedResetRoute({ children }) {
@@ -116,8 +117,16 @@ const router = createBrowserRouter([
         <MyProjectsStudent/>
       </ProtectedRoute>
     ),
+  }, 
+  
+  {
+    path: "/student/myApplications",
+    element: (
+      <ProtectedRoute allowedRoles={["student"]}>
+        <MyApplicationsStudent/>
+      </ProtectedRoute>
+    ),
   },
-
 
   // ✅ Supervisor Dashboard
   {
