@@ -2,7 +2,7 @@
   display: flex;
   height: 100vh;
   background: #fff;
-  font-family: 'Libre Caslon Text', serif;
+  font-family: "Libre Caslon Text", serif;
 }
 
 .project-details-container {
@@ -16,7 +16,6 @@
   margin-bottom: 12px;
 }
 
-/* POSTS */
 .posts-section {
   height: 180px;
   overflow-y: auto;
@@ -27,7 +26,7 @@
   padding-right: 6px;
   border: 2px solid #003566;
   border-radius: 16px;
-  padding: 10px ;
+  padding: 10px;
 }
 
 .posts-section::-webkit-scrollbar {
@@ -64,7 +63,6 @@
   color: gray;
 }
 
-/* ADD UPDATE */
 .add-update {
   display: flex;
   align-items: center;
@@ -89,10 +87,8 @@
   width: 24px;
   height: 24px;
   cursor: pointer;
-
 }
 
-/* BOTTOM SECTION */
 .bottom-section {
   display: flex;
   justify-content: space-between;
@@ -100,10 +96,9 @@
   gap: 20px;
 }
 
-/* TEAM INFO */
 .team-info {
   flex: 1;
-  font-family: 'Libre Caslon Text', serif;
+  font-family: "Libre Caslon Text", serif;
 }
 
 .team-title {
@@ -115,24 +110,22 @@
   margin-bottom: 10px;
 }
 
-/* Table Wrapper */
 .table-wrapper {
   overflow-x: auto;
-  border: 2px solid #001D3D;
+  border: 2px solid #001d3d;
   border-radius: 10px;
   max-width: 100%;
-  background-color: #F5F7F8;
+  background-color: #f5f7f8;
   margin-top: 10px;
-  font-family: 'Libre Caslon Text', serif;
+  font-family: "Libre Caslon Text", serif;
 }
 
-/* Table Styling */
 .table-wrapper table {
   width: 100%;
   table-layout: auto;
   border-collapse: collapse;
   background-color: white;
-  font-family: 'Libre Caslon Text', serif;
+  font-family: "Libre Caslon Text", serif;
 }
 
 .table-wrapper th,
@@ -154,20 +147,19 @@
 }
 
 .table-wrapper th {
-  background-color: #F5F7F8;
+  background-color: #f5f7f8;
   font-weight: bold;
   color: #333;
-  border-bottom: 2px solid #001D3D;
+  border-bottom: 2px solid #001d3d;
 }
 
-/* TASKS */
 .tasks-box {
   width: 400px;
   border: 2px solid #003566;
   border-radius: 16px;
   padding: 14px 12px;
   background: white;
-  font-family: 'Libre Caslon Text', serif;
+  font-family: "Libre Caslon Text", serif;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -211,7 +203,7 @@
   border: 2px solid #003566;
   border-radius: 30px;
   padding: 10px 16px;
-  background: #F5F7F8;
+  background: #f5f7f8;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -237,7 +229,7 @@
 
 .task-title {
   margin: 0;
-  text-decoration: underline; 
+  text-decoration: underline;
 }
 
 .task-status,
@@ -245,7 +237,6 @@
   margin: 0;
 }
 
-/* POPUP */
 .popup-overlay {
   position: fixed;
   top: 0;
@@ -266,7 +257,7 @@
   padding: 20px;
   width: 340px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  font-family: 'Libre Caslon Text', serif;
+  font-family: "Libre Caslon Text", serif;
 }
 
 .popup-header {
@@ -325,7 +316,7 @@
 }
 
 .popup-save {
-  background-color: #FFD60A;
+  background-color: #ffd60a;
   border: none;
   border-radius: 30px;
   padding: 10px;
@@ -346,7 +337,7 @@
 .sidebar-btn {
   display: block;
   background-color: white;
-  color: #001D3D;
+  color: #001d3d;
   font-weight: bold;
   padding: 10px;
   border-radius: 10px;
@@ -358,7 +349,7 @@
 }
 
 .sidebar-btn:hover {
-  background-color: #FFD60A;
+  background-color: #ffd60a;
   color: black;
 }
 
@@ -372,22 +363,22 @@
 }
 
 .status.submitted {
-  background-color: #FFD60A;
+  background-color: #ffd60a;
   color: #000;
 }
 
 .status.late {
-  background-color: #FFB3B3;
+  background-color: #ffb3b3;
   color: #000;
 }
 
 .status.unsubmitted {
-  background-color: #FFEB99;
+  background-color: #ffeb99;
   color: #000;
 }
 
 .join-button {
-  background-color: #FFD60A;
+  background-color: #ffd60a;
   color: #000;
   font-weight: bold;
   padding: 6px 14px;
@@ -402,7 +393,6 @@
   background-color: #e6c309;
 }
 
-/* Meeting */
 .meeting-section {
   margin-bottom: 20px;
 }
@@ -412,7 +402,7 @@
 }
 
 .meeting-box {
-  border: 2px solid #001D3D;
+  border: 2px solid #001d3d;
   border-radius: 12px;
   padding: 10px;
   display: flex;
@@ -422,7 +412,7 @@
 }
 
 .join-button {
-  background-color: #FFD60A;
+  background-color: #ffd60a;
   color: #000;
   font-weight: bold;
   padding: 6px 14px;
@@ -437,7 +427,6 @@
   background-color: #e6c309;
 }
 
-/* Tasks and Grade */
 .tasks-grade-wrapper {
   display: flex;
   justify-content: space-between;
@@ -454,7 +443,6 @@
   font-size: 18px;
 }
 
-/* Status Badges */
 .status {
   padding: 4px 10px;
   border-radius: 8px;
@@ -468,8 +456,8 @@
   color: #155724;
 }
 
-.status.late {  
-background-color: #f8d7da;
+.status.late {
+  background-color: #f8d7da;
   color: #721c24;
 }
 
@@ -491,11 +479,9 @@ background-color: #f8d7da;
   align-items: center;
   width: 100%;
   margin-bottom: 10px;
-  padding-right: 30px; /* Match your page padding for right alignment */
+  padding-right: 30px;
   padding-left: 0;
 }
-
-
 
 .tasks-title {
   font-size: 18px;
@@ -513,7 +499,6 @@ background-color: #f8d7da;
   max-width: 700px;
 }
 
-/* NEW: Compact scrollable tasks table */
 .tasks-scroll-table {
   max-width: 100%;
   overflow-x: auto;
@@ -535,10 +520,10 @@ background-color: #f8d7da;
 .tasks-table {
   min-width: 380px;
   width: 100%;
-  table-layout: fixed; /* tighter layout */
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 14px;
-  font-family: 'Libre Caslon Text', serif;
+  font-family: "Libre Caslon Text", serif;
 }
 
 .tasks-table th,
@@ -552,14 +537,14 @@ background-color: #f8d7da;
 }
 
 .tasks-table th {
-  background-color: #F5F7F8;
+  background-color: #f5f7f8;
   font-weight: bold;
   color: #003566;
   border-bottom: 2px solid #003566;
 }
 
 .tasks-table-wrapper {
-  max-height: 200px; /* You can adjust this height */
+  max-height: 200px;
   overflow-y: auto;
   overflow-x: hidden;
   border: 2px solid #003566;
@@ -592,7 +577,6 @@ background-color: #f8d7da;
   font-size: 14px;
 }
 
-
 .tasks-table td:first-child {
   text-decoration: underline;
   color: #003566;
@@ -601,7 +585,82 @@ background-color: #f8d7da;
 }
 
 .tasks-table td:first-child:hover {
-  color: #001D3D;
+  color: #001d3d;
+}
+.project-info-box {
+  border: 2px solid #001d3d;
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  font-weight: bold;
 }
 
+.project-name {
+  font-size: 16px;
+}
 
+.supervisor-name {
+  font-size: 14px;
+}
+
+.meeting-time-box {
+  border: 2px solid #001d3d;
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  background-color: white;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-box {
+  border: 2px solid #001d3d;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  background-color: white;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.summary-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.summary-text {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.files-section p {
+  margin: 6px 0;
+  font-size: 14px;
+  font-family: "Libre Caslon Text", serif;
+}
+
+.files-section a {
+  text-decoration: underline;
+  color: #001d3d;
+}
+
+.scrollable-content {
+  max-height: 100vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.project-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #333333;
+  margin: 0;
+  padding: 0 0 20px 0;
+  text-decoration: none;
+}

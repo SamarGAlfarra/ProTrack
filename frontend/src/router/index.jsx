@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import MyProfileStudent from "../pages/MyProfileStudent";
 
-
 // Pages
 import Landing from "../pages/Landing";
 import SignIn from "../pages/SignIn";
@@ -32,7 +31,8 @@ import TaskDetails from "../pages/TaskDetails";
 //Student subpages
 import CreateTeam from "../pages/CreateTeam";
 import MyProjectsStudent from "../pages/MyProjectsStudent";
-import MyApplicationsStudent from '../pages/MyApplicationsStudent';
+import MyApplicationsStudent from "../pages/MyApplicationsStudent";
+import StudentProjectDetails from "../pages/StudentProjectDetails";
 
 // ✅ Protected Reset Route
 function ProtectedResetRoute({ children }) {
@@ -92,16 +92,16 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-  
- {
-  path: "/student/createteam",
-  element: (
-    <ProtectedRoute allowedRoles={["student"]}>
-      <CreateTeam />
-    </ProtectedRoute>
-  ),
-},
-{
+
+  {
+    path: "/student/createteam",
+    element: (
+      <ProtectedRoute allowedRoles={["student"]}>
+        <CreateTeam />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/student/myprofile",
     element: (
       <ProtectedRoute allowedRoles={["student"]}>
@@ -114,16 +114,24 @@ const router = createBrowserRouter([
     path: "/student/myprojectsstudent",
     element: (
       <ProtectedRoute allowedRoles={["student"]}>
-        <MyProjectsStudent/>
+        <MyProjectsStudent />
       </ProtectedRoute>
     ),
-  }, 
-  
+  },
+
   {
     path: "/student/myApplications",
     element: (
       <ProtectedRoute allowedRoles={["student"]}>
-        <MyApplicationsStudent/>
+        <MyApplicationsStudent />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/student/projectdetails/:id",
+    element: (
+      <ProtectedRoute allowedRoles={["student"]}>
+        <StudentProjectDetails />
       </ProtectedRoute>
     ),
   },
@@ -161,7 +169,7 @@ const router = createBrowserRouter([
     path: "/supervisor/projectdetails/:id",
     element: (
       <ProtectedRoute allowedRoles={["supervisor"]}>
-        <ProjectDetails/>
+        <ProjectDetails />
       </ProtectedRoute>
     ),
   },
@@ -248,7 +256,7 @@ const router = createBrowserRouter([
     path: "/supervisor/TaskDetails/:id",
     element: (
       <ProtectedRoute allowedRoles={["supervisor"]}>
-        <TaskDetails/>
+        <TaskDetails />
       </ProtectedRoute>
     ),
   },

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom"; // ✅ تم إضافته
 import StudentSideBar from "../components/StudentSideBar";
 import approveIcon from "../assets/approve.png";
 import pendingIcon from "../assets/pending.png";
@@ -8,9 +9,9 @@ import closeIcon from "../assets/xbutton.png";
 import avatar from "../assets/avatar.png";
 import "./MyApplicationsStudent.css";
 
-
 const originalProjects = [
   {
+    id: 1,
     title: "Restaurant Website",
     supervisor: "Wesam Ashour",
     description:
@@ -18,16 +19,19 @@ const originalProjects = [
     status: "Approved",
   },
   {
+    id: 2,
     title: "Mobile App",
     supervisor: "Ruba Salamah",
     status: "Pending",
   },
   {
+    id: 3,
     title: "Mobile App",
     supervisor: "Ahmed Mahdi",
     status: "Pending",
   },
   {
+    id: 4,
     title: "Mobile App",
     supervisor: "Aiman Abusamara",
     status: "Pending",
@@ -107,35 +111,31 @@ const MyApplicationsStudent = () => {
 
         {/* Highlighted project */}
         <div className="highlighted-project">
-        <div className="highlighted-info">
+          <div className="highlighted-info">
             <h4>Restaurant Website</h4>
             <p className="supervisor-name">Wesam Ashour</p>
             <div className="description-box">
-            <p className="description">
+              <p className="description">
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam...
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam...
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam...
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam...
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam...
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam...
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam...
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam...
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam...
-            
-            </p>
+              </p>
             </div>
-        </div>
-        <div className="status-indicator">
+          </div>
+          <div className="status-indicator">
             <img src={getStatusIcon("Approved")} alt="status" />
             <p className="status-label approved">Approved</p>
-        </div>
+          </div>
         </div>
 
         {/* Filtered project list */}
         <div className="project-list">
           {filteredProjects.map((project, index) => (
             <div key={index} className="project-row">
-              <span className="project-title clickable">{project.title}</span>
+              <Link
+                to={`/student/projectdetails/${project.id}`}
+                className="project-title clickable"
+              >
+                {project.title}
+              </Link>
               <span
                 className="supervised-by clickable"
                 onClick={() => handleSupervisorClick(project.supervisor)}
@@ -149,26 +149,26 @@ const MyApplicationsStudent = () => {
 
         {/* Popup for supervisor info */}
         {selectedSupervisor && (
-        <div className="supervisor-popup-overlay">
+          <div className="supervisor-popup-overlay">
             <div className="supervisor-popup-box">
-            <div className="supervisor-popup-header">
+              <div className="supervisor-popup-header">
                 <span>Supervisor Info</span>
                 <img
-                src={closeIcon}
-                alt="Close"
-                className="close-icon"
-                onClick={closePopup}
+                  src={closeIcon}
+                  alt="Close"
+                  className="close-icon"
+                  onClick={closePopup}
                 />
-            </div>
-            <div className="supervisor-popup-content">
+              </div>
+              <div className="supervisor-popup-content">
                 <div className="supervisor-popup-field">Email ID: {selectedSupervisor.email}</div>
                 <div className="supervisor-popup-field">Phone Number: {selectedSupervisor.phone}</div>
                 <div className="supervisor-popup-field">Department: {selectedSupervisor.department}</div>
                 <div className="supervisor-popup-field">Educational Degree: {selectedSupervisor.degree}</div>
                 <div className="supervisor-popup-field">Role: Supervisor</div>
+              </div>
             </div>
-            </div>
-        </div>
+          </div>
         )}
 
       </div>
