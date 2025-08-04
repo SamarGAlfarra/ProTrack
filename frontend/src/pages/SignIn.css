@@ -177,6 +177,85 @@ body, html {
   margin-bottom: 1rem;
 }
 
+.otp-instruction {
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+  color: #444;
+}
+
+.otp-inputs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;              /* spacing between boxes */
+  margin-bottom: 1rem;
+  flex-wrap: nowrap;     /* no line break */
+  overflow: hidden;      /* hide scroll if it tries */
+  max-width: 300px;      /* just wide enough for 6 x 40px + gaps */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.otp-input {
+  all: unset; /* resets inherited styles including padding, border, etc. */
+  text-align: center;
+  font-size: 1.2rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: inherit;
+  outline: none;
+  background-color: white;
+  box-sizing: border-box;
+  min-width: 0 !important;
+  padding: 0 !important;
+  width: 40px !important;
+  height: 40px !important;
+}
+
+
+
+.otp-error {
+  color: red;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.otp-msg {
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.otp-success {
+  color: green;
+}
+
+.otp-fail {
+  color: red;
+}
+
+.otp-resend {
+  margin-bottom: 1rem;
+  cursor: pointer;
+  color: red;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.otp-back {
+  font-size: 0.95rem;
+  margin-top: 1rem;
+}
+
+.otp-link {
+  color: red;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+
+
+
+
+
 
 
 

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useRef } from "react";
-import { verifyOTP, sendOTP } from "../axios"; // ✅ Make sure both are exported
+import { verifyOTP, sendOTP } from "../axios";
 import "./SignIn.css";
 import logo from "../assets/logo2.png";
 
@@ -70,10 +70,10 @@ function OTP() {
         </div>
 
         <h2 className="signin-title">Reset Your Password</h2>
-        <p>Enter the code which we have sent to your email address</p>
+        <p className="otp-instruction">Enter the code which we have sent to your email address</p>
 
         <form className="signin-form" onSubmit={handleSubmit}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: "5px", marginBottom: "1rem" }}>
+          <div className="otp-inputs">
             {Array(6).fill().map((_, i) => (
               <input
                 key={i}
@@ -81,38 +81,25 @@ function OTP() {
                 maxLength="1"
                 ref={(el) => (inputsRef.current[i] = el)}
                 onChange={(e) => handleChange(e, i)}
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  textAlign: "center",
-                  fontSize: "1.2rem",
-                  border: "1px solid #ccc",
-                  borderRadius: "5px"
-                }}
+                className="otp-input"
                 required
               />
             ))}
           </div>
 
-          {error && <p style={{ color: "red", marginBottom: "0.5rem" }}>{error}</p>}
+          {error && <p className="otp-error">{error}</p>}
           {resendMsg && (
-            <p style={{ fontSize: "0.85rem", color: resendMsg.includes("sent") ? "green" : "red", marginBottom: "0.5rem" }}>
+            <p className={`otp-msg ${resendMsg.includes("sent") ? "otp-success" : "otp-fail"}`}>
               {resendMsg}
             </p>
           )}
 
-          <p
-            className="signup-link"
-            style={{ marginBottom: "1rem", cursor: "pointer", color: "red" }}
-            onClick={handleResend}
-          >
-            Resend Code
-          </p>
+          <p className="otp-resend" onClick={handleResend}>Resend Code</p>
 
           <button type="submit" className="signin-btn">Submit</button>
 
-          <p className="signup-text" style={{ marginTop: "1rem" }}>
-            <a href="/" className="signup-link">Back to Home</a>
+          <p className="otp-back">
+            <a href="/" className="otp-link">Back to Home</a>
           </p>
         </form>
       </div>
@@ -121,6 +108,3 @@ function OTP() {
 }
 
 export default OTP;
-
-
-
