@@ -6,16 +6,29 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\AdminController;
 
-// ✅ Public routes (no authentication needed)
+/*
+|--------------------------------------------------------------------------
+| Public routes (no authentication)
+|--------------------------------------------------------------------------
+*/
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+
 Route::get('/departments', [DepartmentController::class, 'index']);
+
 Route::post('/forgot-password', [AuthController::class, 'sendResetOTP']);
 Route::post('/verify-otp', [AuthController::class, 'verifyResetOTP']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
-// ✅ Authenticated routes (JWT protected)
-Route::middleware('auth:api')->group(function () {
+/*
+|--------------------------------------------------------------------------
+| Authenticated routes (JWT protected via HttpOnly cookie)
+| NOTE: requires 'jwt.cookie' alias registered in Kernel:
+|   'jwt.cookie' => \App\Http\Middleware\AppendJwtFromCookie::class,
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
+
     // General user info
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -41,13 +54,16 @@ Route::middleware('auth:api')->group(function () {
             return response()->json(['message' => 'Welcome Admin']);
         });
 
-        // ✅ Admin user approval routes
+        // Admin user approval routes
         Route::get('/admin/pending-users', [AdminController::class, 'listPendingUsers']);
         Route::post('/admin/approve-user/{id}', [AdminController::class, 'approveUser']);
         Route::delete('/admin/reject-user/{id}', [AdminController::class, 'rejectUser']);
     });
 });
 
-
-
-
+/*
+|--------------------------------------------------------------------------
+| Optional: simple health check (public)
+|--------------------------------------------------------------------------
+*/
+Route::get('/health', fn () => response()->json(['ok' => true]));

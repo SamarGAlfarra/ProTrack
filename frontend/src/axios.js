@@ -1,31 +1,34 @@
+// src/axios.js
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
+/**
+ * Using Vite proxy:
+ *  - In vite.config.js, make sure you have:
+ *      server: { proxy: { '/api': 'http://127.0.0.1:8000' } }
+ *  - Then all API calls go to the same origin via "/api" and cookies work reliably.
+ */
 const instance = axios.create({
-  baseURL: API_URL,
+  baseURL: "/api",          // ✅ مهم: نستخدم proxy => نفس الأصل
+  withCredentials: true,    // ✅ يسمح بإرسال/استقبال كوكي HttpOnly
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
 });
 
-// Attach token if available
-instance.interceptors.request.use(config => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// ❌ لا نستخدم أي Authorization من localStorage
+// ❌ لا interceptors تضيف توكن
+// (JWT داخل كوكي HttpOnly والمتصفح يرسله تلقائيًا)
 
-// Fetch departments
+// --- API helpers ---
+
+// Departments
 export const fetchDepartments = async () => {
   const response = await instance.get("/departments");
   return response.data;
 };
 
-// Send OTP
+// Forgot password (send OTP)
 export const sendOTP = async (email) => {
   try {
     const response = await instance.post("/forgot-password", { email });
@@ -45,12 +48,13 @@ export const verifyOTP = async (email, otp) => {
   }
 };
 
+// Reset password
 export const resetPassword = async (email, password, confirmPassword) => {
   try {
     const response = await instance.post("/reset-password", {
       email,
       password,
-      password_confirmation: confirmPassword
+      password_confirmation: confirmPassword,
     });
     return response.data;
   } catch (error) {
@@ -58,26 +62,20 @@ export const resetPassword = async (email, password, confirmPassword) => {
   }
 };
 
-// Fetch pending users requests
+// Admin APIs (authenticated via cookie)
 export const fetchPendingUsers = async () => {
   const response = await instance.get("/admin/pending-users");
   return response.data;
 };
 
-// Approve user by ID
 export const approveUser = async (id) => {
   const response = await instance.post(`/admin/approve-user/${id}`);
   return response.data;
 };
 
-// Reject user by ID
 export const rejectUser = async (id) => {
   const response = await instance.delete(`/admin/reject-user/${id}`);
   return response.data;
 };
 
-
 export default instance;
-
-
-

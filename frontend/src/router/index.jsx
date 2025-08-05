@@ -1,6 +1,6 @@
+// src/router/index.jsx
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import MyProfileStudent from "../pages/MyProfileStudent";
 
 // Pages
 import Landing from "../pages/Landing";
@@ -24,15 +24,16 @@ import MyProfile from "../pages/MyProfile";
 // Supervisor subpages
 import MyProjectsSupervisor from "../pages/MyProjectsSupervisor";
 import MyProfileSupervisor from "../pages/MyProfileSupervisor";
-import AddProject from "../pages/AddProject"; // ✅ IMPORTED CORRECTLY
+import AddProject from "../pages/AddProject";
 import ProjectDetails from "../pages/ProjectDetails";
 import TaskDetails from "../pages/TaskDetails";
 
-//Student subpages
+// Student subpages
 import CreateTeam from "../pages/CreateTeam";
 import MyProjectsStudent from "../pages/MyProjectsStudent";
 import MyApplicationsStudent from "../pages/MyApplicationsStudent";
 import StudentProjectDetails from "../pages/StudentProjectDetails";
+import MyProfileStudent from "../pages/MyProfileStudent";
 
 // ✅ Protected Reset Route
 function ProtectedResetRoute({ children }) {
@@ -41,20 +42,23 @@ function ProtectedResetRoute({ children }) {
   return children;
 }
 
-// ✅ Role-Based Protected Route with Approval Check
+// ✅ Role-Based Protected Route with Hydration Awareness
 function ProtectedRoute({ children, allowedRoles }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  // Wait for /me hydration to finish to avoid flicker / false redirects
+  if (loading) return null; // or a loading spinner component
 
   if (!user) {
-    return <Navigate to="/signin" />;
+    return <Navigate to="/signin" replace />;
   }
 
   if (!user.is_approved) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   if (!allowedRoles.includes(user.role)) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -83,7 +87,7 @@ const router = createBrowserRouter([
     ),
   },
 
-  // ✅ Student Dashboard
+  // ✅ Student
   {
     path: "/student-dashboard",
     element: (
@@ -92,7 +96,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
   {
     path: "/student/createteam",
     element: (
@@ -109,7 +112,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
   {
     path: "/student/myprojectsstudent",
     element: (
@@ -118,7 +120,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
   {
     path: "/student/myApplications",
     element: (
@@ -136,7 +137,7 @@ const router = createBrowserRouter([
     ),
   },
 
-  // ✅ Supervisor Dashboard
+  // ✅ Supervisor
   {
     path: "/supervisor-dashboard",
     element: (
@@ -145,8 +146,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
-  // ✅ Supervisor: Add Project (FIXED)
   {
     path: "/supervisor/addproject",
     element: (
@@ -155,7 +154,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
   {
     path: "/supervisor/editproject/:id",
     element: (
@@ -164,7 +162,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
   {
     path: "/supervisor/projectdetails/:id",
     element: (
@@ -173,8 +170,32 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/supervisor/TaskDetails/:id",
+    element: (
+      <ProtectedRoute allowedRoles={["supervisor"]}>
+        <TaskDetails />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/supervisor/myprojects",
+    element: (
+      <ProtectedRoute allowedRoles={["supervisor"]}>
+        <MyProjectsSupervisor />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/supervisor/myprofile",
+    element: (
+      <ProtectedRoute allowedRoles={["supervisor"]}>
+        <MyProfileSupervisor />
+      </ProtectedRoute>
+    ),
+  },
 
-  // ✅ Admin Dashboard
+  // ✅ Admin
   {
     path: "/admin-dashboard",
     element: (
@@ -183,8 +204,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
-  // ✅ Admin Subpages
   {
     path: "/admin/admins",
     element: (
@@ -222,41 +241,6 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedRoles={["admin"]}>
         <MyProfile />
-      </ProtectedRoute>
-    ),
-  },
-
-  // ✅ Supervisor Subpages
-  {
-    path: "/supervisor/request",
-    element: (
-      <ProtectedRoute allowedRoles={["supervisor"]}>
-        <SupervisorDashboard />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/supervisor/myprojects",
-    element: (
-      <ProtectedRoute allowedRoles={["supervisor"]}>
-        <MyProjectsSupervisor />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/supervisor/myprofile",
-    element: (
-      <ProtectedRoute allowedRoles={["supervisor"]}>
-        <MyProfileSupervisor />
-      </ProtectedRoute>
-    ),
-  },
-
-  {
-    path: "/supervisor/TaskDetails/:id",
-    element: (
-      <ProtectedRoute allowedRoles={["supervisor"]}>
-        <TaskDetails />
       </ProtectedRoute>
     ),
   },
