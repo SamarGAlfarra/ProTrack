@@ -1,26 +1,22 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 import "./Header.css";
 
 function Header() {
-  const navigate = useNavigate();
-
   return (
     <header className="navbar">
-      <img src={logo} alt="ProTrack Logo" className="logo" />
+      <Link to="/">
+        <img src={logo} alt="ProTrack Logo" className="logo" />
+      </Link>
 
       <nav className="nav-links">
-        <a href="#">Home</a>
-        <a href="#">About</a>
-        <a href="#">Features</a>
+        <Link className="nav-btn" to="/">Home</Link>
+        <Link className="nav-btn" to="/about">About</Link>
+        <Link className="nav-btn" to="/features">Features</Link>
 
-        <div className="auth-buttons"> 
-          <button className="login" onClick={() => navigate("/signin")}>
-            Sign In
-          </button>
-          <button className="signup" onClick={() => navigate("/signup")}>
-            Sign Up
-          </button>
+        <div className="auth-buttons">
+          <Link className="login" to="/signin">Sign In</Link>
+          <Link className="signup" to="/signup">Sign Up</Link>
         </div>
       </nav>
     </header>
@@ -28,8 +24,3 @@ function Header() {
 }
 
 export default Header;
-
-
-
-
-

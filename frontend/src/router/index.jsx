@@ -4,6 +4,9 @@ import { useAuth } from "../context/AuthContext";
 
 // Pages
 import Landing from "../pages/Landing";
+import About from "../pages/About";
+import Features from "../pages/Features"; // ✅ add this import
+
 import SignIn from "../pages/SignIn";
 import SignUp from "../pages/SignUp";
 import ForgotPassword from "../pages/ForgotPassword";
@@ -66,6 +69,8 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 const router = createBrowserRouter([
   { path: "/", element: <Landing /> },
+  { path: "/about", element: <About /> },       
+  { path: "/features", element: <Features /> }, 
   { path: "/signin", element: <SignIn /> },
   { path: "/signup", element: <SignUp /> },
   { path: "/forgotpassword", element: <ForgotPassword /> },

@@ -15,7 +15,7 @@ function Landing() {
       >
         <div className="overlay">
           <h1>Manage Graduation Projects With Ease</h1>
-          <p>
+          <p className="h3-margin">
             An all-in-one easy-to-use platform to organize the graduation
             projects entire process.
           </p>
