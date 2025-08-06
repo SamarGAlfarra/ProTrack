@@ -47,7 +47,7 @@ const SupervisorSideBar = () => {
       </div>
 
       <nav className="sidebar-nav">
-        <Link to="/supervisor/request" className="sidebar-link">
+        <Link to="/supervisor-dashboard" className="sidebar-link">
           <img src={homeIcon} alt="Home" className="icon" />
           {!isCollapsed && "Home"}
         </Link>
