@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 // Pages
 import Landing from "../pages/Landing";
 import About from "../pages/About";
-import Features from "../pages/Features"; // ✅ add this import
+import Features from "../pages/Features"; 
 
 import SignIn from "../pages/SignIn";
 import SignUp from "../pages/SignUp";
@@ -38,14 +38,14 @@ import MyApplicationsStudent from "../pages/MyApplicationsStudent";
 import StudentProjectDetails from "../pages/StudentProjectDetails";
 import MyProfileStudent from "../pages/MyProfileStudent";
 
-// ✅ Protected Reset Route
+//  Protected Reset Route
 function ProtectedResetRoute({ children }) {
   const email = localStorage.getItem("resetEmail");
   if (!email) return <Navigate to="/forgotpassword" replace />;
   return children;
 }
 
-// ✅ Role-Based Protected Route with Hydration Awareness
+//  Role-Based Protected Route with Hydration Awareness
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
 
@@ -92,7 +92,7 @@ const router = createBrowserRouter([
     ),
   },
 
-  // ✅ Student
+  //  Student
   {
     path: "/student-dashboard",
     element: (
@@ -142,7 +142,7 @@ const router = createBrowserRouter([
     ),
   },
 
-  // ✅ Supervisor
+  //  Supervisor
   {
     path: "/supervisor-dashboard",
     element: (
@@ -200,7 +200,7 @@ const router = createBrowserRouter([
     ),
   },
 
-  // ✅ Admin
+  //  Admin
   {
     path: "/admin-dashboard",
     element: (

@@ -37,17 +37,14 @@ class AuthController extends Controller
     // ---------- CURRENT USER ----------
     public function me()
     {
-        // يتم استخراج التوكن من الكوكي بواسطة الميدلوير AppendJwtFromCookie
         return response()->json(auth('api')->user());
     }
 
     // ---------- LOGOUT ----------
     public function logout()
     {
-        // إلغاء التوكن على الخادم
         auth('api')->logout();
 
-        // حذف الكوكي بنفس خصائصه لضمان الإزالة
         [$sameSite, $secure] = $this->cookieAttributes();
 
         $forgetCookie = cookie(
@@ -74,9 +71,6 @@ class AuthController extends Controller
         return $this->sendTokenCookieResponse($newToken, auth('api')->user());
     }
 
-    /**
-     * يرسل الاستجابة ويثبت الـ JWT داخل كوكي HttpOnly بخصائص صحيحة حسب بيئة التشغيل
-     */
     protected function sendTokenCookieResponse(string $token, $user)
     {
         $minutes = auth('api')->factory()->getTTL(); // TTL بالدقائق

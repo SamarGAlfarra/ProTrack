@@ -13,35 +13,33 @@ function SignIn() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    try {
-      const user = await login(email, password); // Call AuthContext
+  try {
+    const user = await login(email, password); // AuthContext throws with the right message
 
-      // ✅ Check approval before navigating
-      if (!user.is_approved) {
-        setError("Your account is still pending approval by the admin.");
-        return;
-      }
-
-      // Redirect based on role
-      if (user.role === "student") navigate("/student-dashboard");
-      else if (user.role === "supervisor") navigate("/supervisor-dashboard");
-      else if (user.role === "admin") navigate("/admin-dashboard");
-      else navigate("/");
-    } catch (err) {
-      setError(
-        err?.message === "Your account is still pending admin approval."
-          ? err.message
-          : "Invalid email or password."
-      );
-    } finally {
-      setLoading(false);
+    // (Optional) client-side safety check; backend already blocks unapproved users
+    if (user && user.is_approved === false) {
+      setError("Your account is still pending admin approval.");
+      return;
     }
-  };
+
+    // Redirect based on role
+    if (user.role === "student") navigate("/student-dashboard");
+    else if (user.role === "supervisor") navigate("/supervisor-dashboard");
+    else if (user.role === "admin") navigate("/admin-dashboard");
+    else navigate("/");
+  } catch (err) {
+    // Show the exact message from AuthContext / backend
+    setError(err?.message || "Login failed");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="signin-container">

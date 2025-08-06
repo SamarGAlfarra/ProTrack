@@ -8,19 +8,13 @@ import axios from "axios";
  *  - Then all API calls go to the same origin via "/api" and cookies work reliably.
  */
 const instance = axios.create({
-  baseURL: "/api",          // ✅ مهم: نستخدم proxy => نفس الأصل
-  withCredentials: true,    // ✅ يسمح بإرسال/استقبال كوكي HttpOnly
+  baseURL: "/api",          
+  withCredentials: true,    
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
 });
-
-// ❌ لا نستخدم أي Authorization من localStorage
-// ❌ لا interceptors تضيف توكن
-// (JWT داخل كوكي HttpOnly والمتصفح يرسله تلقائيًا)
-
-// --- API helpers ---
 
 // Departments
 export const fetchDepartments = async () => {

@@ -3,7 +3,7 @@
 return [
 
     'defaults' => [
-        'guard' => 'api', //  Default guard is JWT-based
+        'guard' => 'api', 
         'passwords' => 'users',
     ],
 
@@ -13,7 +13,7 @@ return [
             'provider' => 'users',
         ],
 
-        'api' => [ //  ADD this block for JWT
+        'api' => [ 
             'driver' => 'jwt',
             'provider' => 'users',
         ],
@@ -22,7 +22,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class, //  Your main User model
+            'model' => App\Models\User::class, 
         ],
     ],
 

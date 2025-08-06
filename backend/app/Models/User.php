@@ -20,6 +20,10 @@ class User extends Authenticatable implements JWTSubject
         'photo', 'is_approved', 'department', 'phone_number'
     ];
 
+    protected $casts = [
+    'is_approved' => 'boolean',
+    ];
+
     // JWT-required methods
     public function getJWTIdentifier()
     {
