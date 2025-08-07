@@ -28,7 +28,7 @@ const MyProjectsStudent = () => {
       text: newPost,
       timestamp: new Date().toLocaleString('en-GB').replace(',', ''),
     };
-    setPosts([...posts, newMessage]);
+    setPosts([newMessage,...posts]);
     setNewPost('');
   };
 

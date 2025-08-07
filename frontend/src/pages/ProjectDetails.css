@@ -84,8 +84,9 @@
 }
 
 .add-update img {
-  width: 24px;
-  height: 24px;
+  width: 35px;
+  height: 35px;
+  margin: 4px; 
   cursor: pointer;
 }
 
