@@ -82,11 +82,11 @@ class AuthController extends Controller
             value:    $token,
             minutes:  $minutes,
             path:     '/',
-            domain:   null,      // عدّلها في الإنتاج إذا كان لديك دومين محدد
-            secure:   $secure,   // في الإنتاج يجب أن تكون true عند SameSite=None
-            httpOnly: true,      // لا يمكن قراءته من JavaScript
+            domain:   null,      
+            secure:   $secure,  
+            httpOnly: true,      
             raw:      false,
-            sameSite: $sameSite  // Lax (محلي) / None (إنتاج عبر نطاق مختلف)
+            sameSite: $sameSite  
         );
 
         return response()
