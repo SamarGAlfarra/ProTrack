@@ -9,6 +9,7 @@ class Student extends Model
     protected $primaryKey = 'student_id';
     public $incrementing = false;
     public $timestamps = false;
+    protected $fillable = ['student_id'];
 
     public function user()
     {

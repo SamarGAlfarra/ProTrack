@@ -6,12 +6,18 @@ import peopleIcon from '../assets/delete.png';
 import closeIcon from '../assets/xbutton.png';
 import searchIcon from '../assets/search.png';
 import logoutIcon from '../assets/logout.png';
+import axios from '../axios'; // ✅ use your shared axios instance
 
 const AllAdmins = () => {
   const [semester, setSemester] = useState('20211');
   const [isEditing, setIsEditing] = useState(false);
   const [tempSemester, setTempSemester] = useState(semester);
   const [showPopup, setShowPopup] = useState(false);
+
+  // ✅ live data from API instead of hardcoded array
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [searchTerms, setSearchTerms] = useState({
     name: '',
@@ -54,12 +60,22 @@ const AllAdmins = () => {
     };
   }, []);
 
-  const admins = [
-    { id: 1, name: 'Ahmed Mahdi', adminId: 'ADM001', department: 'IT', role: 'Admin' },
-    { id: 2, name: 'Rania Alkilani', adminId: 'ADM002', department: 'CS', role: 'Admin' },
-    { id: 3, name: 'Ahmed Omar', adminId: 'ADM003', department: 'Comuter Engineering', role: 'Admin' },
-    { id: 4, name: 'Sameer Herzallah', adminId: 'ADM004', department: 'EE', role: 'Admin' },
-  ];
+  // ✅ Fetch approved admins on mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // Backend route: GET /api/admin/admins -> [{ adminId, name, department, role }]
+        const res = await axios.get('/admin/admins');
+        if (mounted) setAdmins(res.data || []);
+      } catch (e) {
+        if (mounted) setError('Failed to load admins.');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const handleEditClick = () => setIsEditing(true);
   const handleSemesterChange = (e) => setTempSemester(e.target.value);
@@ -83,10 +99,10 @@ const AllAdmins = () => {
   };
 
   const filteredAdmins = admins.filter(admin =>
-    admin.name.toLowerCase().includes(searchTerms.name) &&
-    admin.adminId.toLowerCase().includes(searchTerms.adminId) &&
-    admin.department.toLowerCase().includes(searchTerms.department) &&
-    admin.role.toLowerCase().includes(searchTerms.role)
+    String(admin.name || '').toLowerCase().includes(searchTerms.name) &&
+    String(admin.adminId || '').toLowerCase().includes(searchTerms.adminId) &&
+    String(admin.department || '').toLowerCase().includes(searchTerms.department) &&
+    String(admin.role || '').toLowerCase().includes(searchTerms.role)
   );
 
   return (
@@ -120,9 +136,7 @@ const AllAdmins = () => {
                 </>
               )}
             </div>
-            
           </div>
-
         </div>
 
         <div className="header-row">
@@ -229,19 +243,25 @@ const AllAdmins = () => {
             </thead>
 
             <tbody>
-              {filteredAdmins.map((admin, index) => (
-                <tr key={admin.id}>
-                  <td>{index + 1}</td>
-                  <td><u>{admin.name}</u></td>
-                  <td>{admin.adminId}</td>
-                  <td>{admin.department}</td>
-                  <td>{admin.role}</td>
-                  <td className="action-icons">
-                    <img src={editIcon} alt="Edit" className="action-icon" />
-                    <img src={peopleIcon} alt="Delete" className="action-icon" />
-                  </td>
-                </tr>
-              ))}
+              {loading ? (
+                <tr><td colSpan="6">Loading...</td></tr>
+              ) : error ? (
+                <tr><td colSpan="6">{error}</td></tr>
+              ) : (
+                filteredAdmins.map((admin, index) => (
+                  <tr key={admin.adminId || index}>
+                    <td>{index + 1}</td>
+                    <td><u>{admin.name}</u></td>
+                    <td>{admin.adminId}</td>
+                    <td>{admin.department}</td>
+                    <td>{admin.role}</td>
+                    <td className="action-icons">
+                      <img src={editIcon} alt="Edit" className="action-icon" />
+                      <img src={peopleIcon} alt="Delete" className="action-icon" />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

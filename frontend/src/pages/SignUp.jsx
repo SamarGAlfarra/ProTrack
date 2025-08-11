@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "./SignIn.css";
@@ -18,7 +18,6 @@ function SignUp() {
     role: "",
     department: "",
     phone_number: "",
-    educational_degree: "", // used only for supervisors
   });
 
   const [error, setError] = useState("");
@@ -38,12 +37,9 @@ function SignUp() {
 
     try {
       const userData = { ...form };
-      delete userData.confirmPassword;
+      delete userData.confirmPassword; // not needed by backend
 
-      // Remove educational_degree if not a supervisor
-      if (userData.role !== "supervisor") {
-        delete userData.educational_degree;
-      }
+      // degree is no longer sent at all
 
       await register(userData);
 
@@ -68,39 +64,11 @@ function SignUp() {
         <h2 className="signin-title">Create Your Account</h2>
 
         <form className="signin-form" onSubmit={handleSubmit}>
-          <input
-            name="id"
-            placeholder="University ID"
-            required
-            onChange={handleChange}
-          />
-          <input
-            name="name"
-            placeholder="Full Name"
-            required
-            onChange={handleChange}
-          />
-          <input
-            name="email"
-            type="email"
-            placeholder="Email"
-            required
-            onChange={handleChange}
-          />
-          <input
-            name="password"
-            type="password"
-            placeholder="Password"
-            required
-            onChange={handleChange}
-          />
-          <input
-            name="confirmPassword"
-            type="password"
-            placeholder="Confirm Password"
-            required
-            onChange={handleChange}
-          />
+          <input name="id" placeholder="University ID" required onChange={handleChange} />
+          <input name="name" placeholder="Full Name" required onChange={handleChange} />
+          <input name="email" type="email" placeholder="Email" required onChange={handleChange} />
+          <input name="password" type="password" placeholder="Password" required onChange={handleChange} />
+          <input name="confirmPassword" type="password" placeholder="Confirm Password" required onChange={handleChange} />
 
           <select name="role" required onChange={handleChange}>
             <option value="">Role</option>
@@ -109,24 +77,10 @@ function SignUp() {
             <option value="admin">Admin</option>
           </select>
 
-          {/* Show educational degree only if role is supervisor */}
-          {form.role === "supervisor" && (
-            <input
-              name="educational_degree"
-              placeholder="Educational Degree"
-              required
-              onChange={handleChange}
-            />
-          )}
-
+          {/* Department component should call onChange with { target: { name: 'department', value } } */}
           <Department value={form.department} onChange={handleChange} />
 
-          <input
-            name="phone_number"
-            placeholder="Phone number"
-            required
-            onChange={handleChange}
-          />
+          <input name="phone_number" placeholder="Phone number" required onChange={handleChange} />
 
           <button type="submit" className="signin-btn">Sign Up</button>
           {error && <p className="error-text">{error}</p>}
@@ -144,10 +98,3 @@ function SignUp() {
 }
 
 export default SignUp;
-
-
-
-
-
-
-

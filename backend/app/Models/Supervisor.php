@@ -10,14 +10,14 @@ class Supervisor extends Model
     public $incrementing = false;
     public $timestamps = false;
 
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'supervisor_id');
-    }
+    // Add all columns you actually save here:
+    protected $fillable = ['supervisor_id', 'educational_degree', 'projects_no_limit'/*, 'department', 'phone_number'*/];
 
-    public function projects()
-    {
-        return $this->hasMany(Project::class, 'supervisor_id');
-    }
+    // ✅ Eloquent-level default so inserts always include it
+    protected $attributes = [
+        'projects_no_limit' => 5, // or whatever default you want
+    ];
+
+    public function user()   { return $this->belongsTo(User::class, 'supervisor_id'); }
+    public function projects(){ return $this->hasMany(Project::class, 'supervisor_id', 'supervisor_id'); }
 }
-

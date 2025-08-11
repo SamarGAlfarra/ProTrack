@@ -55,10 +55,17 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
         });
 
         // Admin user approval routes
+
+        Route::get('/admin/supervisors', [AdminController::class, 'listApprovedSupervisors']);
+        Route::get('/admin/admins', [AdminController::class, 'listApprovedAdmins']); 
         Route::get('/admin/pending-users', [AdminController::class, 'listPendingUsers']);
-        Route::post('/admin/approve-user/{id}', [AdminController::class, 'approveUser']);
-        Route::delete('/admin/reject-user/{id}', [AdminController::class, 'rejectUser']);
+/*         Route::post('/admin/approve-user/{id}', [AdminController::class, 'approveUser']);
+        Route::delete('/admin/reject-user/{id}', [AdminController::class, 'rejectUser']); */
+        Route::post('/admin/users/{id}/approve', [AdminController::class, 'approveUser']);
+        Route::post('/admin/users/{id}/reject',  [AdminController::class, 'rejectUser']);
     });
+
+
 });
 
 /*

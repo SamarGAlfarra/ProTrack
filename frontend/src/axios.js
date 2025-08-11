@@ -62,14 +62,25 @@ export const fetchPendingUsers = async () => {
   return response.data;
 };
 
-export const approveUser = async (id) => {
-  const response = await instance.post(`/admin/approve-user/${id}`);
-  return response.data;
+export const fetchApprovedAdmins = async () => {
+  const res = await axios.get("/admin/admins"); // baseURL is /api
+  return res.data; // [{ adminId, name, department, role }]
 };
 
-export const rejectUser = async (id) => {
-  const response = await instance.delete(`/admin/reject-user/${id}`);
-  return response.data;
+export const fetchApprovedSupervisors = async () => {
+  const res = await instance.get("/admin/supervisors");
+  return res.data; // [{ supervisorId, name, degree, department, role, projects }]
+};
+
+
+export const approvePendingUser = async (userId) => {
+  const res = await instance.post(`/admin/users/${userId}/approve`);
+  return res.data;
+};
+
+export const rejectPendingUser = async (userId) => {
+  const res = await instance.post(`/admin/users/${userId}/reject`);
+  return res.data;
 };
 
 export default instance;

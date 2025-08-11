@@ -6,12 +6,17 @@ import peopleIcon from '../assets/delete.png';
 import closeIcon from '../assets/xbutton.png';
 import searchIcon from '../assets/search.png';
 import logoutIcon from '../assets/logout.png';
+import axios from '../axios'; // ✅ shared axios instance
 
 const AllSupervisors = () => {
   const [semester, setSemester] = useState('20211');
   const [isEditing, setIsEditing] = useState(false);
   const [tempSemester, setTempSemester] = useState(semester);
   const [showPopup, setShowPopup] = useState(false);
+
+  const [supervisors, setSupervisors] = useState([]);   // ✅ live data
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [searchTerms, setSearchTerms] = useState({
     name: '',
@@ -61,12 +66,22 @@ const AllSupervisors = () => {
     };
   }, []);
 
-  const supervisors = [
-    { id: 1, name: 'Ahmed Mahdi', supervisorId: 'SUP001', degree: 'PhD', department: 'IT', role: 'Supervisor', projects: 3 },
-    { id: 2, name: 'Ahmed Mahdi', supervisorId: 'SUP002', degree: 'MSc', department: 'CS', role: 'Supervisor', projects: 2 },
-    { id: 3, name: 'Ahmed Mahdi', supervisorId: 'SUP003', degree: 'PhD', department: 'CE', role: 'Supervisor', projects: 4 },
-    { id: 4, name: 'Ahmed Mahdi', supervisorId: 'SUP004', degree: 'MSc', department: 'EE', role: 'Supervisor', projects: 1 },
-  ];
+  // ✅ Fetch supervisors on mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // Backend: GET /api/admin/supervisors
+        const res = await axios.get('/admin/supervisors');
+        if (mounted) setSupervisors(res.data || []);
+      } catch (e) {
+        if (mounted) setError('Failed to load supervisors.');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const handleEditClick = () => setIsEditing(true);
   const handleSemesterChange = (e) => setTempSemester(e.target.value);
@@ -90,12 +105,12 @@ const AllSupervisors = () => {
   };
 
   const filteredSupervisors = supervisors.filter((sup) =>
-    sup.name.toLowerCase().includes(searchTerms.name) &&
-    sup.supervisorId.toLowerCase().includes(searchTerms.supervisorId) &&
-    sup.degree.toLowerCase().includes(searchTerms.degree) &&
-    sup.department.toLowerCase().includes(searchTerms.department) &&
-    sup.role.toLowerCase().includes(searchTerms.role) &&
-    sup.projects.toString().toLowerCase().includes(searchTerms.projects)
+    String(sup.name || '').toLowerCase().includes(searchTerms.name) &&
+    String(sup.supervisorId || '').toLowerCase().includes(searchTerms.supervisorId) &&
+    String(sup.degree || '').toLowerCase().includes(searchTerms.degree) &&
+    String(sup.department || '').toLowerCase().includes(searchTerms.department) &&
+    String(sup.role || '').toLowerCase().includes(searchTerms.role) &&
+    String(sup.projects ?? '').toLowerCase().includes(searchTerms.projects)
   );
 
   return (
@@ -278,21 +293,27 @@ const AllSupervisors = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredSupervisors.map((sup, index) => (
-                <tr key={sup.id}>
-                  <td>{index + 1}</td>
-                  <td><u>{sup.name}</u></td>
-                  <td>{sup.supervisorId}</td>
-                  <td>{sup.degree}</td>
-                  <td>{sup.department}</td>
-                  <td>{sup.role}</td>
-                  <td>{sup.projects}</td>
-                  <td className="action-icons">
-                    <img src={editIcon} alt="Edit" className="action-icon" />
-                    <img src={peopleIcon} alt="Delete" className="action-icon" />
-                  </td>
-                </tr>
-              ))}
+              {loading ? (
+                <tr><td colSpan="8">Loading...</td></tr>
+              ) : error ? (
+                <tr><td colSpan="8">{error}</td></tr>
+              ) : (
+                filteredSupervisors.map((sup, index) => (
+                  <tr key={sup.supervisorId || index}>
+                    <td>{index + 1}</td>
+                    <td><u>{sup.name}</u></td>
+                    <td>{sup.supervisorId}</td>
+                    <td>{sup.degree}</td>
+                    <td>{sup.department}</td>
+                    <td>{sup.role}</td>
+                    <td>{sup.projects}</td>
+                    <td className="action-icons">
+                      <img src={editIcon} alt="Edit" className="action-icon" />
+                      <img src={peopleIcon} alt="Delete" className="action-icon" />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
