@@ -10,9 +10,13 @@ class Admin extends Model
     public $incrementing = false;
     public $timestamps = false;
 
+    // السماح بالتعيين الجماعي لهذا العمود
+    protected $fillable = [
+        'admin_id',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class, 'admin_id');
     }
 }
-
