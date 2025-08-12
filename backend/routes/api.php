@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,6 +35,11 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
+    // ===== My Profile (for any authenticated user) =====
+    Route::get('/profile',        [ProfileController::class, 'show']);
+    Route::put('/profile',        [ProfileController::class, 'update']);
+    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']); // NEW: upload avatar
+
     // Student-only routes
     Route::middleware('role:student')->group(function () {
         Route::get('/student/dashboard', function () {
@@ -54,17 +60,18 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
             return response()->json(['message' => 'Welcome Admin']);
         });
 
-        // Admin user approval routes
-
-        Route::get('/admin/supervisors', [AdminController::class, 'listApprovedSupervisors']);
-        Route::get('/admin/admins', [AdminController::class, 'listApprovedAdmins']); 
+        // ===== Admin user & directories routes =====
+        Route::get('/admin/supervisors',   [AdminController::class, 'listApprovedSupervisors']);
+        Route::get('/admin/admins',        [AdminController::class, 'listApprovedAdmins']);
         Route::get('/admin/pending-users', [AdminController::class, 'listPendingUsers']);
-/*         Route::post('/admin/approve-user/{id}', [AdminController::class, 'approveUser']);
-        Route::delete('/admin/reject-user/{id}', [AdminController::class, 'rejectUser']); */
+        Route::get('/admin/students',      [AdminController::class, 'listApprovedStudents']); // All Students
+
+        // Approvals
+        // Route::post('/admin/approve-user/{id}', [AdminController::class, 'approveUser']);
+        // Route::delete('/admin/reject-user/{id}', [AdminController::class, 'rejectUser']);
         Route::post('/admin/users/{id}/approve', [AdminController::class, 'approveUser']);
         Route::post('/admin/users/{id}/reject',  [AdminController::class, 'rejectUser']);
     });
-
 
 });
 

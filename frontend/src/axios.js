@@ -8,13 +8,14 @@ import axios from "axios";
  *  - Then all API calls go to the same origin via "/api" and cookies work reliably.
  */
 const instance = axios.create({
-  baseURL: "/api",          
-  withCredentials: true,    
-  headers: {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  },
+  baseURL: "/api",
+  withCredentials: true,
 });
+
+// Optional: default headers
+instance.defaults.headers.common["Accept"] = "application/json";
+
+// -------------------- Public APIs --------------------
 
 // Departments
 export const fetchDepartments = async () => {
@@ -56,14 +57,15 @@ export const resetPassword = async (email, password, confirmPassword) => {
   }
 };
 
-// Admin APIs (authenticated via cookie)
+// -------------------- Admin APIs (authenticated via cookie) --------------------
+
 export const fetchPendingUsers = async () => {
   const response = await instance.get("/admin/pending-users");
   return response.data;
 };
 
 export const fetchApprovedAdmins = async () => {
-  const res = await axios.get("/admin/admins"); // baseURL is /api
+  const res = await instance.get("/admin/admins");
   return res.data; // [{ adminId, name, department, role }]
 };
 
@@ -71,7 +73,6 @@ export const fetchApprovedSupervisors = async () => {
   const res = await instance.get("/admin/supervisors");
   return res.data; // [{ supervisorId, name, degree, department, role, projects }]
 };
-
 
 export const approvePendingUser = async (userId) => {
   const res = await instance.post(`/admin/users/${userId}/approve`);
@@ -81,6 +82,33 @@ export const approvePendingUser = async (userId) => {
 export const rejectPendingUser = async (userId) => {
   const res = await instance.post(`/admin/users/${userId}/reject`);
   return res.data;
+};
+
+export const fetchApprovedStudents = async () => {
+  const res = await instance.get("/admin/students");
+  return res.data; // [{ studentId, name, department, role }]
+};
+
+// -------------------- Profile APIs (authenticated) --------------------
+
+export const getProfile = async () => {
+  const res = await instance.get("/profile");
+  return res.data; // { id, name, email, department_id, department, phone_number, photo_url, ... }
+};
+
+export const updateProfile = async (payload) => {
+  // payload: { name, email, phone_number?, department? }
+  const res = await instance.put("/profile", payload);
+  return res.data; // { message: 'Profile updated successfully.' }
+};
+
+export const uploadProfilePhoto = async (file) => {
+  const form = new FormData();
+  form.append("photo", file);
+  const res = await instance.post("/profile/photo", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data; // { message, photo, photo_url }
 };
 
 export default instance;

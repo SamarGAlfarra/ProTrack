@@ -1,68 +1,65 @@
-import React, { useState, useRef, useEffect } from 'react';
-import './Admin.css';
-import AdminSidebar from '../components/AdminSideBar';
-import peopleIcon from '../assets/delete.png';
-import editIcon from '../assets/edit.png';
-import closeIcon from '../assets/xbutton.png';
-import searchIcon from '../assets/search.png';
-import logoutIcon from '../assets/logout.png';
+import React, { useEffect, useRef, useState } from "react";
+import "./Admin.css";
+import AdminSidebar from "../components/AdminSideBar";
+import searchIcon from "../assets/search.png";
+import editIcon from "../assets/edit.png";
+import peopleIcon from "../assets/delete.png"; // ← أيقونة الحذف (نفس المستخدمة بباقي الصفحات)
+import closeIcon from "../assets/xbutton.png";
+import { fetchApprovedStudents } from "../axios";
 
 const AllStudents = () => {
-  const [semester, setSemester] = useState('20211');
+  const [semester, setSemester] = useState("20211");
   const [isEditing, setIsEditing] = useState(false);
   const [tempSemester, setTempSemester] = useState(semester);
   const [showPopup, setShowPopup] = useState(false);
 
+  const [students, setStudents] = useState([]); // بيانات من API
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const [searchTerms, setSearchTerms] = useState({
-    name: '',
-    studentId: '',
-    department: '',
-    supervisor: '',
-    projectId: '',
+    name: "",
+    studentId: "",
+    department: "",
   });
 
   const [activeSearch, setActiveSearch] = useState({
     name: false,
     studentId: false,
     department: false,
-    supervisor: false,
-    projectId: false,
   });
 
   const tableRef = useRef(null);
 
+  // إغلاق صناديق البحث عند النقر خارج الجدول
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (tableRef.current && !tableRef.current.contains(event.target)) {
-        setSearchTerms({
-          name: '',
-          studentId: '',
-          department: '',
-          supervisor: '',
-          projectId: '',
-        });
-        setActiveSearch({
-          name: false,
-          studentId: false,
-          department: false,
-          supervisor: false,
-          projectId: false,
-        });
+    const handleClickOutside = (e) => {
+      if (tableRef.current && !tableRef.current.contains(e.target)) {
+        setSearchTerms({ name: "", studentId: "", department: "" });
+        setActiveSearch({ name: false, studentId: false, department: false });
       }
     };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const students = [
-    { id: 1, name: 'Ahmed Mahdi', studentId: 'STD001', department: 'IT', supervisor: 'Dr. Ali', projectId: 'PRJ001' },
-    { id: 2, name: 'Ahmed Mahdi', studentId: 'STD002', department: 'CS', supervisor: 'Dr. Omar', projectId: 'PRJ002' },
-    { id: 3, name: 'Ahmed Mahdi', studentId: 'STD003', department: 'CE', supervisor: 'Dr. Salim', projectId: 'PRJ003' },
-    { id: 4, name: 'Ahmed Mahdi', studentId: 'STD004', department: 'EE', supervisor: 'Dr. Layla', projectId: 'PRJ004' },
-  ];
+  // جلب الطلاب
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await fetchApprovedStudents(); // [{ studentId, name, department, role }]
+        if (mounted) setStudents(data || []);
+      } catch (err) {
+        if (mounted) setError("Failed to load students.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleEditClick = () => setIsEditing(true);
   const handleSemesterChange = (e) => setTempSemester(e.target.value);
@@ -85,12 +82,28 @@ const AllStudents = () => {
     }));
   };
 
-  const filteredStudents = students.filter((student) =>
-    student.name.toLowerCase().includes(searchTerms.name) &&
-    student.studentId.toLowerCase().includes(searchTerms.studentId) &&
-    student.department.toLowerCase().includes(searchTerms.department) &&
-    student.supervisor.toLowerCase().includes(searchTerms.supervisor) &&
-    student.projectId.toLowerCase().includes(searchTerms.projectId)
+  // Actions handlers (مكان الربط لاحقًا مع صفحات/Popups)
+  const handleEditStudent = (student) => {
+    // TODO: افتحي صفحة تفاصيل/تعديل أو Popup
+    console.log("Edit student:", student);
+    alert(`Edit student ${student.name} (coming soon)`);
+  };
+
+  const handleDeleteStudent = (student) => {
+    // TODO: اربطيها بـ API حذف بعد تأكيد
+    if (window.confirm(`Delete student ${student.name}? (demo)`)) {
+      console.log("Delete student:", student);
+      alert("Delete action is a placeholder for now.");
+    }
+  };
+
+  const filteredStudents = students.filter(
+    (st) =>
+      String(st.name ?? "").toLowerCase().includes(searchTerms.name) &&
+      String(st.studentId ?? "").toLowerCase().includes(searchTerms.studentId) &&
+      String(st.department ?? "")
+        .toLowerCase()
+        .includes(searchTerms.department)
   );
 
   return (
@@ -123,6 +136,7 @@ const AllStudents = () => {
             )}
           </div>
         </div>
+
         <div className="header-row">
           <h3 className="section-title">All Students</h3>
           <button className="add-admin-btn" onClick={() => setShowPopup(true)}>
@@ -142,7 +156,7 @@ const AllStudents = () => {
                       type="text"
                       placeholder="Search Name"
                       className="column-search"
-                      onChange={(e) => handleSearchChange('name', e.target.value)}
+                      onChange={(e) => handleSearchChange("name", e.target.value)}
                       autoFocus
                     />
                   ) : (
@@ -152,7 +166,7 @@ const AllStudents = () => {
                         src={searchIcon}
                         alt="Search"
                         className="search-icon"
-                        onClick={() => toggleSearch('name')}
+                        onClick={() => toggleSearch("name")}
                       />
                     </span>
                   )}
@@ -164,7 +178,9 @@ const AllStudents = () => {
                       type="text"
                       placeholder="Search ID"
                       className="column-search"
-                      onChange={(e) => handleSearchChange('studentId', e.target.value)}
+                      onChange={(e) =>
+                        handleSearchChange("studentId", e.target.value)
+                      }
                       autoFocus
                     />
                   ) : (
@@ -174,7 +190,7 @@ const AllStudents = () => {
                         src={searchIcon}
                         alt="Search"
                         className="search-icon"
-                        onClick={() => toggleSearch('studentId')}
+                        onClick={() => toggleSearch("studentId")}
                       />
                     </span>
                   )}
@@ -186,7 +202,9 @@ const AllStudents = () => {
                       type="text"
                       placeholder="Search Dept"
                       className="column-search"
-                      onChange={(e) => handleSearchChange('department', e.target.value)}
+                      onChange={(e) =>
+                        handleSearchChange("department", e.target.value)
+                      }
                       autoFocus
                     />
                   ) : (
@@ -196,51 +214,7 @@ const AllStudents = () => {
                         src={searchIcon}
                         alt="Search"
                         className="search-icon"
-                        onClick={() => toggleSearch('department')}
-                      />
-                    </span>
-                  )}
-                </th>
-
-                <th>
-                  {activeSearch.supervisor ? (
-                    <input
-                      type="text"
-                      placeholder="Search Supervisor"
-                      className="column-search"
-                      onChange={(e) => handleSearchChange('supervisor', e.target.value)}
-                      autoFocus
-                    />
-                  ) : (
-                    <span className="header-label">
-                      Supervisor
-                      <img
-                        src={searchIcon}
-                        alt="Search"
-                        className="search-icon"
-                        onClick={() => toggleSearch('supervisor')}
-                      />
-                    </span>
-                  )}
-                </th>
-
-                <th>
-                  {activeSearch.projectId ? (
-                    <input
-                      type="text"
-                      placeholder="Search Project ID"
-                      className="column-search"
-                      onChange={(e) => handleSearchChange('projectId', e.target.value)}
-                      autoFocus
-                    />
-                  ) : (
-                    <span className="header-label">
-                      Project ID
-                      <img
-                        src={searchIcon}
-                        alt="Search"
-                        className="search-icon"
-                        onClick={() => toggleSearch('projectId')}
+                        onClick={() => toggleSearch("department")}
                       />
                     </span>
                   )}
@@ -249,25 +223,51 @@ const AllStudents = () => {
                 <th>Actions</th>
               </tr>
             </thead>
+
             <tbody>
-              {filteredStudents.map((student, index) => (
-                <tr key={student.id}>
-                  <td>{index + 1}</td>
-                  <td><u>{student.name}</u></td>
-                  <td>{student.studentId}</td>
-                  <td>{student.department}</td>
-                  <td>{student.supervisor}</td>
-                  <td>{student.projectId}</td>
-                  <td className="action-icons">
-                    <img src={peopleIcon} alt="Delete" className="action-icon" />
-                  </td>
+              {loading ? (
+                <tr>
+                  <td colSpan="5">Loading...</td>
                 </tr>
-              ))}
+              ) : error ? (
+                <tr>
+                  <td colSpan="5">{error}</td>
+                </tr>
+              ) : filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan="5">No students found.</td>
+                </tr>
+              ) : (
+                filteredStudents.map((st, idx) => (
+                  <tr key={st.studentId || idx}>
+                    <td>{idx + 1}</td>
+                    <td>
+                      <u>{st.name}</u>
+                    </td>
+                    <td>{st.studentId}</td>
+                    <td>{st.department}</td>
+                    <td className="action-icons">
+                      <img
+                        src={editIcon}
+                        alt="Edit"
+                        className="action-icon"
+                        onClick={() => handleEditStudent(st)}
+                      />
+                      <img
+                        src={peopleIcon}
+                        alt="Delete"
+                        className="action-icon"
+                        onClick={() => handleDeleteStudent(st)}
+                      />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Add Student Popup */}
+        {/* Popup (اختياري لاحقًا) */}
         {showPopup && (
           <div className="popup-overlay">
             <div className="popup-box">
@@ -280,14 +280,7 @@ const AllStudents = () => {
                   onClick={() => setShowPopup(false)}
                 />
               </div>
-              <form className="popup-form">
-                <input type="text" placeholder="Name" className="popup-input" />
-                <input type="text" placeholder="ID" className="popup-input" />
-                <input type="email" placeholder="Email" className="popup-input" />
-                <input type="password" placeholder="Password" className="popup-input" />
-                <input type="text" placeholder="Department" className="popup-input" />
-                <button type="submit" className="popup-submit-btn">Add</button>
-              </form>
+              <div className="popup-form">Coming soon…</div>
             </div>
           </div>
         )}

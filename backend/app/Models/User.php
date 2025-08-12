@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
-
+use App\Models\Department;
 class User extends Authenticatable implements JWTSubject
 {
     use Notifiable;
@@ -14,7 +14,10 @@ class User extends Authenticatable implements JWTSubject
     protected $primaryKey = 'id';
     protected $keyType = 'int';
     public $timestamps = false;
-
+public function dept()
+{
+    return $this->belongsTo(Department::class, 'department', 'id');
+}
     protected $fillable = [
         'id', 'name', 'email', 'password', 'role',
         'photo', 'is_approved', 'department', 'phone_number'
