@@ -4,12 +4,16 @@ import './Admin.css';
 import approveIcon from "../assets/approveicon.png";
 import rejectIcon from "../assets/rejecticon.png";
 import searchIcon from "../assets/search.png";
-import axios, { fetchPendingUsers, approvePendingUser, rejectPendingUser } from "../axios";
+import api, { fetchPendingUsers, approvePendingUser, rejectPendingUser } from "../axios";
 
 const AdminDashboard = () => {
-  const [requests, setRequests] = useState([]);          // <-- from API
-  const [loading, setLoading] = useState(true);          // optional
-  const [error, setError] = useState(null);              // optional
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // 👇 For logged-in user info
+  const [me, setMe] = useState(null);
+  const [loadingMe, setLoadingMe] = useState(true);
 
   const [searchTerms, setSearchTerms] = useState({
     userId: '',
@@ -38,12 +42,26 @@ const AdminDashboard = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // ✅ Fetch current logged-in user
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/me', { withCredentials: true });
+        setMe(data);
+      } catch (e) {
+        console.error("Failed to fetch user info");
+      } finally {
+        setLoadingMe(false);
+      }
+    })();
+  }, []);
+
   // ✅ Fetch pending users on mount
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const data = await fetchPendingUsers(); // [{userId,name,department,role}]
+        const data = await fetchPendingUsers();
         if (mounted) setRequests(data || []);
       } catch (e) {
         if (mounted) setError("Failed to load pending users.");
@@ -59,24 +77,22 @@ const AdminDashboard = () => {
   };
 
   const handleApprove = async (userId) => {
-  try {
-    await approvePendingUser(userId);
-    // Remove from table immediately
-    setRequests(prev => prev.filter(u => u.userId !== userId));
-  } catch (e) {
-    setError(e?.response?.data?.message || "Approval failed.");
-  }
-};
+    try {
+      await approvePendingUser(userId);
+      setRequests(prev => prev.filter(u => u.userId !== userId));
+    } catch (e) {
+      setError(e?.response?.data?.message || "Approval failed.");
+    }
+  };
 
-const handleReject = async (userId) => {
-  try {
-    await rejectPendingUser(userId);
-    // Remove from table immediately
-    setRequests(prev => prev.filter(u => u.userId !== userId));
-  } catch (e) {
-    setError(e?.response?.data?.message || "Rejection failed.");
-  }
-};
+  const handleReject = async (userId) => {
+    try {
+      await rejectPendingUser(userId);
+      setRequests(prev => prev.filter(u => u.userId !== userId));
+    } catch (e) {
+      setError(e?.response?.data?.message || "Rejection failed.");
+    }
+  };
 
   const handleSearchChange = (field, value) => {
     setSearchTerms(prev => ({ ...prev, [field]: value.toLowerCase() }));
@@ -89,13 +105,18 @@ const handleReject = async (userId) => {
     String(req.role ?? '').toLowerCase().includes(searchTerms.role)
   );
 
+  // 👇 Extract first name safely
+  const firstName = (me?.name || '').split(' ')[0] || 'User';
+
   return (
     <div className="admin-dashboard">
       <AdminSidebar />
 
       <div className="dashboard-content">
         <div className="dashboard-header">
-          <h2 className="welcome-message">Welcome Back, Ssre</h2>
+          <h2 className="welcome-message">
+            {loadingMe ? "Welcome Back, ..." : `Welcome Back, ${firstName}`}
+          </h2>
         </div>
 
         <h3 className="section-title">Incoming Sign Up Requests</h3>
@@ -118,7 +139,6 @@ const handleReject = async (userId) => {
               <thead>
                 <tr>
                   <th>#</th>
-
                   <th>
                     {activeSearch.userId ? (
                       <input
@@ -140,7 +160,6 @@ const handleReject = async (userId) => {
                       </span>
                     )}
                   </th>
-
                   <th>
                     {activeSearch.name ? (
                       <input
@@ -162,7 +181,6 @@ const handleReject = async (userId) => {
                       </span>
                     )}
                   </th>
-
                   <th>
                     {activeSearch.department ? (
                       <input
@@ -184,7 +202,6 @@ const handleReject = async (userId) => {
                       </span>
                     )}
                   </th>
-
                   <th>
                     {activeSearch.role ? (
                       <input
@@ -206,7 +223,6 @@ const handleReject = async (userId) => {
                       </span>
                     )}
                   </th>
-
                   <th>Approval State</th>
                 </tr>
               </thead>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './AdminSidebar.css';
 
@@ -10,22 +10,43 @@ import avatarIcon from "../assets/avatar.png";
 import menuIcon from "../assets/menu.png";
 import profileIcon from "../assets/profile.png";
 import logoutIcon from "../assets/logout.png";
+import api from '../axios'; // <-- your configured axios with withCredentials
 
 const AdminSidebar = () => {
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
+  const [me, setMe] = useState(null);
+  const [loadingMe, setLoadingMe] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await api.get('/me'); // cookie is sent automatically
+        if (!mounted) return;
+        setMe(data);
+      } catch (err) {
+        // optional: redirect to login if unauthorized
+        // navigate('/signin');
+      } finally {
+        if (mounted) setLoadingMe(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [navigate]);
+
+  const toggleSidebar = () => setIsCollapsed(!isCollapsed);
 
   const handleLogout = () => {
+    // call your logout endpoint if you have one; or just reload to clear cookie scope
     alert("Logging out...");
-      setTimeout(() => {
-    navigate("/");
-  }, 100); 
+    setTimeout(() => {
+      navigate("/");
+    }, 100);
   };
 
+  const firstName = (me?.name || '').split(' ')[0] || '';
 
   return (
     <div className={`admin-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
@@ -42,8 +63,10 @@ const AdminSidebar = () => {
         <img src={avatarIcon} alt="Avatar" className="avatar" />
         {!isCollapsed && (
           <div className="profile-text">
-            <h4>Hi, Ssre</h4>
-            <p>123456</p>
+            <h4>
+              {loadingMe ? 'Hi, ...' : `Hi, ${firstName || 'User'}`}
+            </h4>
+            <p>{loadingMe ? '...' : me?.id}</p>
           </div>
         )}
       </div>
@@ -70,17 +93,13 @@ const AdminSidebar = () => {
           {!isCollapsed && "My Profile"}
         </Link>
 
-<div className="sidebar-link" onClick={handleLogout} style={{ cursor: 'pointer' }}>
-  <img src={logoutIcon} alt="logout" className="icon" />
-  {!isCollapsed && "Logout"}
-</div>
-
+        <div className="sidebar-link" onClick={handleLogout} style={{ cursor: 'pointer' }}>
+          <img src={logoutIcon} alt="logout" className="icon" />
+          {!isCollapsed && "Logout"}
+        </div>
       </nav>
     </div>
   );
 };
 
 export default AdminSidebar;
-
-
-

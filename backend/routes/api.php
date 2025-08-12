@@ -61,10 +61,12 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
         });
 
         // ===== Admin user & directories routes =====
+        Route::get('/admin/students',      [AdminController::class, 'listApprovedStudents']); // All Students
         Route::get('/admin/supervisors',   [AdminController::class, 'listApprovedSupervisors']);
         Route::get('/admin/admins',        [AdminController::class, 'listApprovedAdmins']);
         Route::get('/admin/pending-users', [AdminController::class, 'listPendingUsers']);
-        Route::get('/admin/students',      [AdminController::class, 'listApprovedStudents']); // All Students
+        Route::get('/semesters/current', [AdminController::class, 'current']);
+        Route::put('/semesters/current', [AdminController::class, 'setCurrent']);
 
         // Approvals
         // Route::post('/admin/approve-user/{id}', [AdminController::class, 'approveUser']);

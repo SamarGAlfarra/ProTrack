@@ -6,8 +6,10 @@ use App\Models\User;
 use App\Models\Student;
 use App\Models\Supervisor;
 use App\Models\Admin;
+use App\Models\Semester;            
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;   
 
 class AdminController extends Controller
 {
@@ -89,7 +91,7 @@ class AdminController extends Controller
                                   ?? optional(optional($s->user)->dept)->Name
                                   ?? (string) optional($s->user)->department,
                 'role'         => optional($s->user)->role,
-                'projects'     => $s->projects()->count(),
+                'projects'     => 3,
             ];
         });
 
@@ -99,32 +101,50 @@ class AdminController extends Controller
     /**
      * Approved Students with department name
      */
-    public function listApprovedStudents()
-    {
-        $rows = Student::query()
-            ->with([
-                'user:id,name,department,role,is_approved',
-                'user.dept:id,name,Name',
-            ])
-            ->whereHas('user', function ($q) {
-                $q->where('role', 'student')->where('is_approved', true);
-            })
-            ->orderBy('student_id', 'asc')
-            ->get();
+    // app/Http/Controllers/AdminController.php
 
-        $payload = $rows->map(function ($s) {
-            return [
-                'studentId'  => $s->student_id,
-                'name'       => optional($s->user)->name,
-                'department' => optional(optional($s->user)->dept)->name
-                                ?? optional(optional($s->user)->dept)->Name
-                                ?? (string) optional($s->user)->department,
-                'role'       => optional($s->user)->role,
-            ];
-        });
+public function listApprovedStudents(Request $request)
+{
+    $rows = DB::table('students as st')
+        ->join('users as u', 'u.id', '=', 'st.student_id')
+        ->where('u.role', 'student')
+        ->where('u.is_approved', true)
 
-        return response()->json($payload);
-    }
+        // department table join (FK = users.department -> departments.id)
+        ->leftJoin('departments as d', 'd.id', '=', 'u.department')
+
+        // approved team membership (if any)
+        ->leftJoin('team_members as tm', function ($join) {
+            $join->on('tm.student_id', '=', 'st.student_id')
+                 ->where('tm.is_approved', true);
+        })
+        ->leftJoin('teams as t', 't.id', '=', 'tm.team_id')
+        ->leftJoin('team_applications as ta', function ($join) {
+            $join->on('ta.team_id', '=', 't.id')
+                 ->where('ta.status', 'Approved');
+        })
+        ->leftJoin('projects as p', 'p.project_id', '=', 'ta.project_id')
+        ->leftJoin('supervisors as s', 's.supervisor_id', '=', 'p.supervisor_id')
+        ->leftJoin('users as su', 'su.id', '=', 's.supervisor_id')
+
+        ->select([
+            'st.student_id as student_id',
+            'u.name as student_name',
+
+            // ✅ handle both column casings + fallback to users.department
+            DB::raw('COALESCE(d.name, d.name, u.department) as department'),
+
+            'p.project_id as project_id',
+            'su.name as supervisor_name',
+        ])
+        ->orderBy('u.name')
+        ->get();
+
+    return response()->json($rows);
+}
+
+
+
 
     /**
      * Approve user by ID and create role-specific record
@@ -191,5 +211,47 @@ class AdminController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'User has been rejected and removed.']);
+    }
+
+    public function current()
+    {
+        $sem = Semester::where('is_current', true)->first();
+        if (!$sem) {
+            return response()->json(['id' => null, 'name' => null], 200);
+        }
+        return response()->json([
+            'id' => $sem->id,       // e.g., '20211'
+            'name' => $sem->name ?? $sem->id,
+        ], 200);
+    }
+
+    // PUT /semesters/current  { id: "20212" }
+    public function setCurrent(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|string|max:20'
+        ]);
+        $id = trim($request->input('id'));
+
+        return DB::transaction(function () use ($id) {
+            // create if not exists (use id as name if you don't have a title)
+            $sem = Semester::firstOrCreate(
+                ['id' => $id],
+                ['name' => $id]
+            );
+
+            // unset current on all
+            Semester::where('is_current', true)->update(['is_current' => false]);
+
+            // set current
+            $sem->is_current = true;
+            $sem->save();
+
+            return response()->json([
+                'id' => $sem->id,
+                'name' => $sem->name ?? $sem->id,
+                'is_current' => (bool) $sem->is_current,
+            ], 200);
+        });
     }
 }

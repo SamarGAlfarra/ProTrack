@@ -6,18 +6,24 @@ import peopleIcon from '../assets/delete.png';
 import closeIcon from '../assets/xbutton.png';
 import searchIcon from '../assets/search.png';
 import logoutIcon from '../assets/logout.png';
-import axios from '../axios'; // ✅ use your shared axios instance
+import axios from '../axios'; // ✅ your configured axios (withCredentials true)
 
 const AllAdmins = () => {
-  const [semester, setSemester] = useState('20211');
+  const [semester, setSemester] = useState('');               // 🔄 will load from API
   const [isEditing, setIsEditing] = useState(false);
-  const [tempSemester, setTempSemester] = useState(semester);
+  const [tempSemester, setTempSemester] = useState('');
   const [showPopup, setShowPopup] = useState(false);
 
-  // ✅ live data from API instead of hardcoded array
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // current user
+  const [me, setMe] = useState(null);
+  const [loadingMe, setLoadingMe] = useState(true);
+
+  const [savingSemester, setSavingSemester] = useState(false); // 🆕 UX while saving
+  const [semLoadError, setSemLoadError] = useState('');        // 🆕 error display
 
   const [searchTerms, setSearchTerms] = useState({
     name: '',
@@ -35,37 +41,47 @@ const AllAdmins = () => {
 
   const tableRef = useRef(null);
 
-  // Click outside detection
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (tableRef.current && !tableRef.current.contains(event.target)) {
-        setSearchTerms({
-          name: '',
-          adminId: '',
-          department: '',
-          role: '',
-        });
-        setActiveSearch({
-          name: false,
-          adminId: false,
-          department: false,
-          role: false,
-        });
+        setSearchTerms({ name: '', adminId: '', department: '', role: '' });
+        setActiveSearch({ name: false, adminId: false, department: false, role: false });
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // ✅ Fetch approved admins on mount
+  // /me
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await axios.get('/me');
+        setMe(data);
+      } catch {}
+      finally { setLoadingMe(false); }
+    })();
+  }, []);
+
+  // 🆕 Load current semester from API
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await axios.get('/semesters/current'); // { id: '20211', name: '20211' }
+        const current = data?.id || data?.name || '';
+        setSemester(current);
+        setTempSemester(current);
+      } catch (e) {
+        setSemLoadError('Failed to load current semester.');
+      }
+    })();
+  }, []);
+
+  // Load admins
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        // Backend route: GET /api/admin/admins -> [{ adminId, name, department, role }]
         const res = await axios.get('/admin/admins');
         if (mounted) setAdmins(res.data || []);
       } catch (e) {
@@ -79,23 +95,41 @@ const AllAdmins = () => {
 
   const handleEditClick = () => setIsEditing(true);
   const handleSemesterChange = (e) => setTempSemester(e.target.value);
-  const handleSemesterBlur = () => {
+
+  // 🆕 Save on blur: create if missing, set as current
+  const handleSemesterBlur = async () => {
     setIsEditing(false);
-    setSemester(tempSemester);
+
+    const value = (tempSemester || '').trim();
+    if (!value || value === semester) {
+      // nothing to do or unchanged
+      setTempSemester(semester);
+      return;
+    }
+
+    try {
+      setSavingSemester(true);
+      setSemLoadError('');
+      // PUT /semesters/current { id: "20212" }
+      const { data } = await axios.put('/semesters/current', { id: value });
+      const updated = data?.id || value;
+      setSemester(updated);
+      setTempSemester(updated);
+    } catch (e) {
+      setSemLoadError(e?.response?.data?.message || 'Failed to update current semester.');
+      // revert UI
+      setTempSemester(semester);
+    } finally {
+      setSavingSemester(false);
+    }
   };
 
   const handleSearchChange = (field, value) => {
-    setSearchTerms(prev => ({
-      ...prev,
-      [field]: value.toLowerCase(),
-    }));
+    setSearchTerms(prev => ({ ...prev, [field]: value.toLowerCase() }));
   };
 
   const toggleSearch = (field) => {
-    setActiveSearch(prev => ({
-      ...prev,
-      [field]: !prev[field],
-    }));
+    setActiveSearch(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
   const filteredAdmins = admins.filter(admin =>
@@ -105,6 +139,8 @@ const AllAdmins = () => {
     String(admin.role || '').toLowerCase().includes(searchTerms.role)
   );
 
+  const firstName = (me?.name || '').split(' ')[0] || 'User';
+
   return (
     <div className="admin-dashboard">
       <AdminSidebar />
@@ -112,7 +148,10 @@ const AllAdmins = () => {
       <div className="dashboard-content">
         <div className="dashboard-header">
           <div className="welcome-semester-container">
-            <h2 className="welcome-message">Welcome Back, Ssre</h2>
+            <h2 className="welcome-message">
+              {loadingMe ? 'Welcome Back, ...' : `Welcome Back, ${firstName}`}
+            </h2>
+
             <div className="semester-box">
               <span className="semester-label">Current Semester</span>
               {isEditing ? (
@@ -121,21 +160,31 @@ const AllAdmins = () => {
                   className="semester-input"
                   value={tempSemester}
                   onChange={handleSemesterChange}
-                  onBlur={handleSemesterBlur}
+                  onBlur={handleSemesterBlur} // 🆕 saves on blur
+                  disabled={savingSemester}
                   autoFocus
                 />
               ) : (
                 <>
-                  <span className="semester-value">{semester}</span>
+                  <span className="semester-value">
+                    {semester || (semLoadError ? '—' : 'Loading…')}
+                  </span>
                   <img
                     src={editIcon}
                     alt="Edit"
-                    className="action-icon"
+                    className={`action-icon ${savingSemester ? 'disabled' : ''}`}
+                    style={{ opacity: savingSemester ? 0.6 : 1, pointerEvents: savingSemester ? 'none' : 'auto' }}
                     onClick={handleEditClick}
                   />
                 </>
               )}
             </div>
+
+            {semLoadError && (
+              <div style={{ color: 'red', fontSize: 12, marginTop: 6 }}>
+                {semLoadError}
+              </div>
+            )}
           </div>
         </div>
 
@@ -149,7 +198,6 @@ const AllAdmins = () => {
             <thead>
               <tr>
                 <th>#</th>
-
                 <th>
                   {activeSearch.name ? (
                     <input
@@ -162,16 +210,10 @@ const AllAdmins = () => {
                   ) : (
                     <span className="header-label">
                       Admin's Name
-                      <img
-                        src={searchIcon}
-                        alt="Search"
-                        className="search-icon"
-                        onClick={() => toggleSearch('name')}
-                      />
+                      <img src={searchIcon} alt="Search" className="search-icon" onClick={() => toggleSearch('name')} />
                     </span>
                   )}
                 </th>
-
                 <th>
                   {activeSearch.adminId ? (
                     <input
@@ -184,16 +226,10 @@ const AllAdmins = () => {
                   ) : (
                     <span className="header-label">
                       Admin's ID
-                      <img
-                        src={searchIcon}
-                        alt="Search"
-                        className="search-icon"
-                        onClick={() => toggleSearch('adminId')}
-                      />
+                      <img src={searchIcon} alt="Search" className="search-icon" onClick={() => toggleSearch('adminId')} />
                     </span>
                   )}
                 </th>
-
                 <th>
                   {activeSearch.department ? (
                     <input
@@ -206,16 +242,10 @@ const AllAdmins = () => {
                   ) : (
                     <span className="header-label">
                       Department
-                      <img
-                        src={searchIcon}
-                        alt="Search"
-                        className="search-icon"
-                        onClick={() => toggleSearch('department')}
-                      />
+                      <img src={searchIcon} alt="Search" className="search-icon" onClick={() => toggleSearch('department')} />
                     </span>
                   )}
                 </th>
-
                 <th>
                   {activeSearch.role ? (
                     <input
@@ -228,16 +258,10 @@ const AllAdmins = () => {
                   ) : (
                     <span className="header-label">
                       Role
-                      <img
-                        src={searchIcon}
-                        alt="Search"
-                        className="search-icon"
-                        onClick={() => toggleSearch('role')}
-                      />
+                      <img src={searchIcon} alt="Search" className="search-icon" onClick={() => toggleSearch('role')} />
                     </span>
                   )}
                 </th>
-
                 <th>Actions</th>
               </tr>
             </thead>
@@ -266,18 +290,12 @@ const AllAdmins = () => {
           </table>
         </div>
 
-        {/* Add Admin Popup */}
         {showPopup && (
           <div className="popup-overlay">
             <div className="popup-box">
               <div className="popup-header">
                 <h3>Add Admin</h3>
-                <img
-                  src={closeIcon}
-                  alt="Close"
-                  className="close-icon"
-                  onClick={() => setShowPopup(false)}
-                />
+                <img src={closeIcon} alt="Close" className="close-icon" onClick={() => setShowPopup(false)} />
               </div>
               <form className="popup-form">
                 <input type="text" placeholder="Name" className="popup-input" />
@@ -290,7 +308,6 @@ const AllAdmins = () => {
             </div>
           </div>
         )}
-        
       </div>
     </div>
   );

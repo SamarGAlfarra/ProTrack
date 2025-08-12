@@ -36,6 +36,24 @@ const AllSupervisors = () => {
     projects: false,
   });
 
+  const [firstName, setFirstName] = useState('');
+
+useEffect(() => {
+  let mounted = true;
+  (async () => {
+    try {
+      // ✅ Get logged-in user info
+      const res = await axios.get('/me', { withCredentials: true });
+      if (mounted && res.data?.name) {
+        setFirstName(res.data.name.split(' ')[0]); // First word of name
+      }
+    } catch (err) {
+      console.error('Failed to fetch user info', err);
+    }
+  })();
+  return () => { mounted = false; };
+}, []);
+
   const tableRef = useRef(null);
 
   useEffect(() => {
@@ -118,7 +136,7 @@ const AllSupervisors = () => {
       <AdminSidebar />
       <div className="dashboard-content">
         <div className="welcome-semester-container">
-          <h2 className="welcome-message">Welcome Back, Ssre</h2>
+          <h2 className="welcome-message">  Welcome Back, {firstName || '...'}</h2>
           <div className="semester-box">
             <span className="semester-label">Current Semester</span>
             {isEditing ? (
