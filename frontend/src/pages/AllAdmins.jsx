@@ -9,9 +9,6 @@ import logoutIcon from '../assets/logout.png';
 import axios from '../axios'; // ✅ your configured axios (withCredentials true)
 
 const AllAdmins = () => {
-  const [semester, setSemester] = useState('');               // 🔄 will load from API
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempSemester, setTempSemester] = useState('');
   const [showPopup, setShowPopup] = useState(false);
 
   const [admins, setAdmins] = useState([]);
@@ -21,9 +18,6 @@ const AllAdmins = () => {
   // current user
   const [me, setMe] = useState(null);
   const [loadingMe, setLoadingMe] = useState(true);
-
-  const [savingSemester, setSavingSemester] = useState(false); // 🆕 UX while saving
-  const [semLoadError, setSemLoadError] = useState('');        // 🆕 error display
 
   const [searchTerms, setSearchTerms] = useState({
     name: '',
@@ -40,6 +34,17 @@ const AllAdmins = () => {
   });
 
   const tableRef = useRef(null);
+
+  // form state for Add Admin
+  const [form, setForm] = useState({
+    name: '',
+    adminId: '',
+    email: '',
+    password: '',
+    department: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState('');
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -63,20 +68,6 @@ const AllAdmins = () => {
     })();
   }, []);
 
-  // 🆕 Load current semester from API
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await axios.get('/semesters/current'); // { id: '20211', name: '20211' }
-        const current = data?.id || data?.name || '';
-        setSemester(current);
-        setTempSemester(current);
-      } catch (e) {
-        setSemLoadError('Failed to load current semester.');
-      }
-    })();
-  }, []);
-
   // Load admins
   useEffect(() => {
     let mounted = true;
@@ -92,37 +83,6 @@ const AllAdmins = () => {
     })();
     return () => { mounted = false; };
   }, []);
-
-  const handleEditClick = () => setIsEditing(true);
-  const handleSemesterChange = (e) => setTempSemester(e.target.value);
-
-  // 🆕 Save on blur: create if missing, set as current
-  const handleSemesterBlur = async () => {
-    setIsEditing(false);
-
-    const value = (tempSemester || '').trim();
-    if (!value || value === semester) {
-      // nothing to do or unchanged
-      setTempSemester(semester);
-      return;
-    }
-
-    try {
-      setSavingSemester(true);
-      setSemLoadError('');
-      // PUT /semesters/current { id: "20212" }
-      const { data } = await axios.put('/semesters/current', { id: value });
-      const updated = data?.id || value;
-      setSemester(updated);
-      setTempSemester(updated);
-    } catch (e) {
-      setSemLoadError(e?.response?.data?.message || 'Failed to update current semester.');
-      // revert UI
-      setTempSemester(semester);
-    } finally {
-      setSavingSemester(false);
-    }
-  };
 
   const handleSearchChange = (field, value) => {
     setSearchTerms(prev => ({ ...prev, [field]: value.toLowerCase() }));
@@ -141,6 +101,40 @@ const AllAdmins = () => {
 
   const firstName = (me?.name || '').split(' ')[0] || 'User';
 
+  // Add Admin handlers
+  const onFormChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setSaveErr('');
+    if (!form.name || !form.adminId || !form.email || !form.password) {
+      setSaveErr('Name, ID, Email, and Password are required.');
+      return;
+    }
+    try {
+      setSaving(true);
+      const { data } = await axios.post('/admin/addAdmin', {
+        name: form.name,
+        adminId: form.adminId,
+        email: form.email,
+        password: form.password,
+        department: form.department || null,
+      });
+      // append to table
+      setAdmins(prev => [data, ...prev]);
+      // reset & close
+      setForm({ name: '', adminId: '', email: '', password: '', department: '' });
+      setShowPopup(false);
+    } catch (e2) {
+      setSaveErr(e2?.response?.data?.message || 'Failed to add admin.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="admin-dashboard">
       <AdminSidebar />
@@ -151,40 +145,6 @@ const AllAdmins = () => {
             <h2 className="welcome-message">
               {loadingMe ? 'Welcome Back, ...' : `Welcome Back, ${firstName}`}
             </h2>
-
-            <div className="semester-box">
-              <span className="semester-label">Current Semester</span>
-              {isEditing ? (
-                <input
-                  type="text"
-                  className="semester-input"
-                  value={tempSemester}
-                  onChange={handleSemesterChange}
-                  onBlur={handleSemesterBlur} // 🆕 saves on blur
-                  disabled={savingSemester}
-                  autoFocus
-                />
-              ) : (
-                <>
-                  <span className="semester-value">
-                    {semester || (semLoadError ? '—' : 'Loading…')}
-                  </span>
-                  <img
-                    src={editIcon}
-                    alt="Edit"
-                    className={`action-icon ${savingSemester ? 'disabled' : ''}`}
-                    style={{ opacity: savingSemester ? 0.6 : 1, pointerEvents: savingSemester ? 'none' : 'auto' }}
-                    onClick={handleEditClick}
-                  />
-                </>
-              )}
-            </div>
-
-            {semLoadError && (
-              <div style={{ color: 'red', fontSize: 12, marginTop: 6 }}>
-                {semLoadError}
-              </div>
-            )}
           </div>
         </div>
 
@@ -277,7 +237,7 @@ const AllAdmins = () => {
                     <td>{index + 1}</td>
                     <td><u>{admin.name}</u></td>
                     <td>{admin.adminId}</td>
-                    <td>{admin.department}</td>
+                    <td>{admin.department || '—'}</td>
                     <td>{admin.role}</td>
                     <td className="action-icons">
                       <img src={editIcon} alt="Edit" className="action-icon" />
@@ -297,13 +257,53 @@ const AllAdmins = () => {
                 <h3>Add Admin</h3>
                 <img src={closeIcon} alt="Close" className="close-icon" onClick={() => setShowPopup(false)} />
               </div>
-              <form className="popup-form">
-                <input type="text" placeholder="Name" className="popup-input" />
-                <input type="text" placeholder="ID" className="popup-input" />
-                <input type="email" placeholder="Email" className="popup-input" />
-                <input type="password" placeholder="Password" className="popup-input" />
-                <input type="text" placeholder="Department" className="popup-input" />
-                <button type="submit" className="popup-submit-btn">Add</button>
+              <form className="popup-form" onSubmit={onSubmit}>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Name"
+                  className="popup-input"
+                  value={form.name}
+                  onChange={onFormChange}
+                />
+                <input
+                  type="text"
+                  name="adminId"
+                  placeholder="ID"
+                  className="popup-input"
+                  value={form.adminId}
+                  onChange={onFormChange}
+                />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  className="popup-input"
+                  value={form.email}
+                  onChange={onFormChange}
+                />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                  className="popup-input"
+                  value={form.password}
+                  onChange={onFormChange}
+                />
+                <input
+                  type="text"
+                  name="department"
+                  placeholder="Department"
+                  className="popup-input"
+                  value={form.department}
+                  onChange={onFormChange}
+                />
+
+                {saveErr && <div style={{ color: 'red', fontSize: 12, marginTop: 6 }}>{saveErr}</div>}
+
+                <button type="submit" className="popup-submit-btn" disabled={saving}>
+                  {saving ? 'Adding…' : 'Add'}
+                </button>
               </form>
             </div>
           </div>

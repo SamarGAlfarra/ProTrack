@@ -9,9 +9,6 @@ import logoutIcon from '../assets/logout.png';
 import axios from '../axios'; // ✅ shared axios instance
 
 const AllSupervisors = () => {
-  const [semester, setSemester] = useState('20211');
-  const [isEditing, setIsEditing] = useState(false);
-  const [tempSemester, setTempSemester] = useState(semester);
   const [showPopup, setShowPopup] = useState(false);
 
   const [supervisors, setSupervisors] = useState([]);   // ✅ live data
@@ -38,21 +35,21 @@ const AllSupervisors = () => {
 
   const [firstName, setFirstName] = useState('');
 
-useEffect(() => {
-  let mounted = true;
-  (async () => {
-    try {
-      // ✅ Get logged-in user info
-      const res = await axios.get('/me', { withCredentials: true });
-      if (mounted && res.data?.name) {
-        setFirstName(res.data.name.split(' ')[0]); // First word of name
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // ✅ Get logged-in user info
+        const res = await axios.get('/me', { withCredentials: true });
+        if (mounted && res.data?.name) {
+          setFirstName(res.data.name.split(' ')[0]); // First word of name
+        }
+      } catch (err) {
+        console.error('Failed to fetch user info', err);
       }
-    } catch (err) {
-      console.error('Failed to fetch user info', err);
-    }
-  })();
-  return () => { mounted = false; };
-}, []);
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const tableRef = useRef(null);
 
@@ -101,13 +98,6 @@ useEffect(() => {
     return () => { mounted = false; };
   }, []);
 
-  const handleEditClick = () => setIsEditing(true);
-  const handleSemesterChange = (e) => setTempSemester(e.target.value);
-  const handleSemesterBlur = () => {
-    setIsEditing(false);
-    setSemester(tempSemester);
-  };
-
   const handleSearchChange = (field, value) => {
     setSearchTerms((prev) => ({
       ...prev,
@@ -137,29 +127,6 @@ useEffect(() => {
       <div className="dashboard-content">
         <div className="welcome-semester-container">
           <h2 className="welcome-message">  Welcome Back, {firstName || '...'}</h2>
-          <div className="semester-box">
-            <span className="semester-label">Current Semester</span>
-            {isEditing ? (
-              <input
-                type="text"
-                className="semester-input"
-                value={tempSemester}
-                onChange={handleSemesterChange}
-                onBlur={handleSemesterBlur}
-                autoFocus
-              />
-            ) : (
-              <>
-                <span className="semester-value">{semester}</span>
-                <img
-                  src={editIcon}
-                  alt="Edit"
-                  className="action-icon"
-                  onClick={handleEditClick}
-                />
-              </>
-            )}
-          </div>
         </div>
 
         <div className="header-row">

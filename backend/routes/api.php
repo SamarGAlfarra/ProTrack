@@ -79,6 +79,9 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
 
         Route::post('/admin/users/{id}/approve', [AdminController::class, 'approveUser']);
         Route::post('/admin/users/{id}/reject',  [AdminController::class, 'rejectUser']);
+
+        Route::post('/admin/addAdmin', [AdminController::class, 'addAdmin']); // create admin
+
     });
 
 });

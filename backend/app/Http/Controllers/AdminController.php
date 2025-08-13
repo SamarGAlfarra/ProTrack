@@ -9,7 +9,11 @@ use App\Models\Admin;
 use App\Models\Semester;            
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\DB;   
+use Illuminate\Support\Facades\DB; 
+use Illuminate\Validation\Rule;   
+use App\Mail\AdminCredentialsMail;
+use Illuminate\Support\Facades\Hash;   // ✅ add this
+
 
 class AdminController extends Controller
 {
@@ -91,7 +95,7 @@ class AdminController extends Controller
                                   ?? optional(optional($s->user)->dept)->Name
                                   ?? (string) optional($s->user)->department,
                 'role'         => optional($s->user)->role,
-                'projects'     => 3,
+                'projects'     => $s->projects_no_limit ,
             ];
         });
 
@@ -213,45 +217,90 @@ public function listApprovedStudents(Request $request)
         return response()->json(['message' => 'User has been rejected and removed.']);
     }
 
-    public function current()
+
+        public function setCurrent(Request $request)
     {
-        $sem = Semester::where('is_current', true)->first();
-        if (!$sem) {
-            return response()->json(['id' => null, 'name' => null], 200);
-        }
+        $data = $request->validate([
+            'id' => ['required','regex:/^\d{4}[123]$/'], // YYYY + 1|2|3
+        ]);
+
+        $id = $data['id'];
+        $last = substr($id, -1);
+
+        $map = ['1' => 'fall', '2' => 'spring', '3' => 'summer'];
+        $name = $map[$last];
+
+        // make sure model is configured for string PK (see model snippet below)
+        $semester = Semester::updateOrCreate(
+            ['id' => $id],
+            ['name' => $name]
+        );
+
+        // flip "current" flag
+        Semester::where('is_current', true)->update(['is_current' => false]);
+        $semester->is_current = true;
+        $semester->save();
+
         return response()->json([
-            'id' => $sem->id,       // e.g., '20211'
-            'name' => $sem->name ?? $sem->id,
-        ], 200);
+            'id'   => $semester->id,
+            'name' => $semester->name,
+        ]);
     }
 
-    // PUT /semesters/current  { id: "20212" }
-    public function setCurrent(Request $request)
+    public function current()
     {
-        $request->validate([
-            'id' => 'required|string|max:20'
+        $s = Semester::where('is_current', true)->first();
+        return $s ? response()->json(['id'=>$s->id, 'name'=>$s->name])
+                  : response()->json(['id'=>null, 'name'=>null]);
+    }
+
+     public function addAdmin(Request $request)
+    {
+        $data = $request->validate([
+            'adminId'    => ['required','string','max:32', Rule::unique('users','id')],
+            'name'       => ['required','string','max:255'],
+            'email'      => ['required','email','max:255', Rule::unique('users','email')],
+            'password'   => ['required','string','min:6'],
+            'department' => ['nullable','string','max:255'],
         ]);
-        $id = trim($request->input('id'));
 
-        return DB::transaction(function () use ($id) {
-            // create if not exists (use id as name if you don't have a title)
-            $sem = Semester::firstOrCreate(
-                ['id' => $id],
-                ['name' => $id]
-            );
+        $plainPassword = $data['password'];
 
-            // unset current on all
-            Semester::where('is_current', true)->update(['is_current' => false]);
+        return DB::transaction(function () use ($data, $plainPassword) {
+            // Create user (id is the institutional ID)
+            $user = User::create([
+                'id'          => $data['adminId'],
+                'name'        => $data['name'],
+                'email'       => $data['email'],
+                'password'    => Hash::make($plainPassword),
+                'role'        => 'admin',
+                'is_approved' => 1,
+                'department'  => $data['department'] ?? null,
+            ]);
 
-            // set current
-            $sem->is_current = true;
-            $sem->save();
+            // Create admin row
+            Admin::create([
+                'admin_id'   => $data['adminId'],
+                'department' => $data['department'] ?? null,
+            ]);
+
+            // Send credentials email
+            Mail::to($user->email)->send(new AdminCredentialsMail(
+                adminName: $user->name,
+                adminId:   $user->id,
+                password:  $plainPassword
+            ));
 
             return response()->json([
-                'id' => $sem->id,
-                'name' => $sem->name ?? $sem->id,
-                'is_current' => (bool) $sem->is_current,
-            ], 200);
+                'name'       => $user->name,
+                'adminId'    => $user->id,
+                'department' => $user->department,
+                'role'       => $user->role,
+            ], 201);
         });
     }
 }
+
+
+
+

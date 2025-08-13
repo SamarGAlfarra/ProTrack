@@ -4,6 +4,7 @@ import './Admin.css';
 import approveIcon from "../assets/approveicon.png";
 import rejectIcon from "../assets/rejecticon.png";
 import searchIcon from "../assets/search.png";
+import editIcon from '../assets/edit.png';
 import api, { fetchPendingUsers, approvePendingUser, rejectPendingUser } from "../axios";
 
 const AdminDashboard = () => {
@@ -30,6 +31,16 @@ const AdminDashboard = () => {
   });
 
   const tableRef = useRef(null);
+
+  // ===== Current Semester state (moved here) =====
+  const [semester, setSemester] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempSemester, setTempSemester] = useState('');
+  const [savingSemester, setSavingSemester] = useState(false);
+  const [semLoadError, setSemLoadError] = useState('');
+  const [semFormatError, setSemFormatError] = useState('');
+  const isValidSemester = (s) => /^\d{4}[123]$/.test(String(s || '').trim());
+  // ==============================================
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -72,6 +83,20 @@ const AdminDashboard = () => {
     return () => { mounted = false; };
   }, []);
 
+  // 🆕 Load current semester from API (moved here)
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/semesters/current');
+        const current = data?.id || data?.name || '';
+        setSemester(current);
+        setTempSemester(current);
+      } catch (e) {
+        setSemLoadError('Failed to load current semester.');
+      }
+    })();
+  }, []);
+
   const toggleSearch = (field) => {
     setActiveSearch(prev => ({ ...prev, [field]: !prev[field] }));
   };
@@ -108,6 +133,69 @@ const AdminDashboard = () => {
   // 👇 Extract first name safely
   const firstName = (me?.name || '').split(' ')[0] || 'User';
 
+  // ===== Semester handlers (moved here) =====
+  const handleEditClick = () => setIsEditing(true);
+
+  const handleSemesterChange = (e) => {
+    const val = e.target.value;
+    setTempSemester(val);
+    if (!val) {
+      setSemFormatError('');
+    } else {
+      setSemFormatError(
+        isValidSemester(val)
+          ? ''
+          : 'Semester format must be YYYY + 1|2|3 (stands for fall, spring or summer semester) (e.g., 20251)'
+      );
+    }
+  };
+
+  const handleSemesterBlur = async () => {
+    const value = (tempSemester || '').trim();
+
+    if (!value) {
+      setSemFormatError('');
+      setIsEditing(false);
+      setTempSemester(semester);
+      return;
+    }
+
+    if (!isValidSemester(value)) {
+      setSemFormatError('Semester format must be YYYY + 1|2|3 (stands for fall, spring or summer semester) (e.g., 20251)');
+      setIsEditing(true);
+      return;
+    }
+
+    if (value === semester) {
+      setSemFormatError('');
+      setIsEditing(false);
+      return;
+    }
+
+    try {
+      setSavingSemester(true);
+      setSemLoadError('');
+      setSemFormatError('');
+
+      const termDigit = value.slice(-1);
+      const termMap = { '1': 'fall', '2': 'spring', '3': 'summer' };
+      const name = termMap[termDigit] || '';
+
+      const { data } = await api.put('/semesters/current', { id: value, name });
+      const updated = data?.id || value;
+      setSemester(updated);
+      setTempSemester(updated);
+      setIsEditing(false);
+    } catch (e) {
+      setSemLoadError(e?.response?.data?.message || 'Failed to update current semester.');
+      setTempSemester(semester);
+      setIsEditing(false);
+    } finally {
+      setSavingSemester(false);
+    }
+  };
+  // ==========================================
+
   return (
     <div className="admin-dashboard">
       <AdminSidebar />
@@ -117,6 +205,51 @@ const AdminDashboard = () => {
           <h2 className="welcome-message">
             {loadingMe ? "Welcome Back, ..." : `Welcome Back, ${firstName}`}
           </h2>
+
+          {/* ===== Current Semester box (now here) ===== */}
+          <div className="semester-box">
+            <span className="semester-label">Current Semester</span>
+            {isEditing ? (
+              <div className="semester-edit-wrap">
+                <input
+                  type="text"
+                  className={`semester-input ${semFormatError ? 'invalid' : ''}`}
+                  value={tempSemester}
+                  onChange={handleSemesterChange}
+                  onBlur={handleSemesterBlur}
+                  disabled={savingSemester}
+                  inputMode="numeric"
+                  maxLength={5}
+                  placeholder="e.g., 20251"
+                  autoFocus
+                />
+                {semFormatError && (
+                  <span style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
+                    {semFormatError}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <>
+                <span className="semester-value">
+                  {semester || (semLoadError ? '—' : 'Loading…')}
+                </span>
+                <img
+                  src={editIcon}
+                  alt="Edit"
+                  className={`action-icon ${savingSemester ? 'disabled' : ''}`}
+                  style={{ opacity: savingSemester ? 0.6 : 1, pointerEvents: savingSemester ? 'none' : 'auto' }}
+                  onClick={handleEditClick}
+                />
+              </>
+            )}
+          </div>
+          {semLoadError && (
+            <div style={{ color: 'red', fontSize: 12, marginTop: 6 }}>
+              {semLoadError}
+            </div>
+          )}
+          {/* ============================================ */}
         </div>
 
         <h3 className="section-title">Incoming Sign Up Requests</h3>

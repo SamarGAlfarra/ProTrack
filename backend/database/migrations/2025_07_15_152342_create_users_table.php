@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->string('photo')->nullable();
             $table->boolean('is_approved')->default(false);
             $table->unsignedBigInteger('department');
-            $table->string('phone_number');
+            $table->string('phone_number', 32)->nullable()->change();;
 
             $table->foreign('department')->references('id')->on('departments')->onDelete('cascade');
         });
