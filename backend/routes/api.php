@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StudentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,8 +25,6 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 /*
 |--------------------------------------------------------------------------
 | Authenticated routes (JWT protected via HttpOnly cookie)
-| NOTE: requires 'jwt.cookie' alias registered in Kernel:
-|   'jwt.cookie' => \App\Http\Middleware\AppendJwtFromCookie::class,
 |--------------------------------------------------------------------------
 */
 Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
@@ -38,39 +37,46 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
     // ===== My Profile (for any authenticated user) =====
     Route::get('/profile',        [ProfileController::class, 'show']);
     Route::put('/profile',        [ProfileController::class, 'update']);
-    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']); // NEW: upload avatar
+    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
 
-    // Student-only routes
+    // ===== Student-only =====
     Route::middleware('role:student')->group(function () {
-        Route::get('/student/dashboard', function () {
-            return response()->json(['message' => 'Welcome Student']);
-        });
+        Route::get('/student/dashboard', fn () => response()->json(['message' => 'Welcome Student']));
+
+        // معلومات رأس الصفحة
+        Route::get('/student/header',       [StudentController::class, 'header']);
+        Route::get('/student/team',         [StudentController::class, 'currentTeam']);
+        Route::get('/student/team/members', [StudentController::class, 'teamMembers']);
+
+        // طلبات فريقي (كأدمن)
+        Route::get('/student/team/requests',                        [StudentController::class, 'pendingRequests']);
+        Route::post('/student/team/requests/{studentId}/approve',   [StudentController::class, 'approveRequest']);
+        Route::post('/student/team/requests/{studentId}/reject',    [StudentController::class, 'rejectRequest']);
+        Route::delete('/student/team/members/{studentId}',          [StudentController::class, 'removeMember']);
+
+        // الدعوات/الطلبات الموجهة إليّ كطالب
+        Route::get('/student/my-join-requests',                   [StudentController::class, 'myJoinRequests']);
+        Route::post('/student/my-join-requests/{teamId}/accept',  [StudentController::class, 'acceptMyInvite']);
+        Route::post('/student/my-join-requests/{teamId}/reject',  [StudentController::class, 'rejectMyInvite']);
     });
 
-    // Supervisor-only routes
+    // ===== Supervisor-only =====
     Route::middleware('role:supervisor')->group(function () {
-        Route::get('/supervisor/dashboard', function () {
-            return response()->json(['message' => 'Welcome Supervisor']);
-        });
+        Route::get('/supervisor/dashboard', fn () => response()->json(['message' => 'Welcome Supervisor']));
     });
 
-    // Admin-only routes
+    // ===== Admin-only =====
     Route::middleware('role:admin')->group(function () {
-        Route::get('/admin/dashboard', function () {
-            return response()->json(['message' => 'Welcome Admin']);
-        });
+        Route::get('/admin/dashboard', fn () => response()->json(['message' => 'Welcome Admin']));
 
-        // ===== Admin user & directories routes =====
-        Route::get('/admin/students',      [AdminController::class, 'listApprovedStudents']); // All Students
+        Route::get('/admin/students',      [AdminController::class, 'listApprovedStudents']);
         Route::get('/admin/supervisors',   [AdminController::class, 'listApprovedSupervisors']);
         Route::get('/admin/admins',        [AdminController::class, 'listApprovedAdmins']);
         Route::get('/admin/pending-users', [AdminController::class, 'listPendingUsers']);
-        Route::get('/semesters/current', [AdminController::class, 'current']);
-        Route::put('/semesters/current', [AdminController::class, 'setCurrent']);
 
-        // Approvals
-        // Route::post('/admin/approve-user/{id}', [AdminController::class, 'approveUser']);
-        // Route::delete('/admin/reject-user/{id}', [AdminController::class, 'rejectUser']);
+        Route::get('/semesters/current',   [AdminController::class, 'current']);
+        Route::put('/semesters/current',   [AdminController::class, 'setCurrent']);
+
         Route::post('/admin/users/{id}/approve', [AdminController::class, 'approveUser']);
         Route::post('/admin/users/{id}/reject',  [AdminController::class, 'rejectUser']);
     });
@@ -79,7 +85,7 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Optional: simple health check (public)
+| Optional: health check
 |--------------------------------------------------------------------------
 */
 Route::get('/health', fn () => response()->json(['ok' => true]));
