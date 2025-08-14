@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->string('photo')->nullable();
             $table->boolean('is_approved')->default(false);
             $table->unsignedBigInteger('department');
-            $table->string('phone_number', 32)->nullable()->change();;
+            $table->bigInteger('phone_number')->nullable()->default(null)->change();
 
             $table->foreign('department')->references('id')->on('departments')->onDelete('cascade');
         });
@@ -23,5 +23,11 @@ return new class extends Migration {
 
     public function down(): void {
         Schema::dropIfExists('users');
+        Schema::table('users', function (Blueprint $table) {
+            // Revert to NOT NULL (adjust to whatever you used above)
+            $table->bigInteger('phone_number')->nullable(false)->change();
+            // or:
+            // $table->string('phone_number', 32)->nullable(false)->change();
+        });
     }
 };

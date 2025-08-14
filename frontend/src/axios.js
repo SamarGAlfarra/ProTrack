@@ -111,4 +111,7 @@ export const uploadProfilePhoto = async (file) => {
   return res.data; // { message, photo, photo_url }
 };
 
+export const createAdmin = (payload) => api.post('/admins', payload);
+
+
 export default instance;

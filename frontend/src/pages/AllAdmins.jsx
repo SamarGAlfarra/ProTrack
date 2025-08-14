@@ -7,6 +7,7 @@ import closeIcon from '../assets/xbutton.png';
 import searchIcon from '../assets/search.png';
 import logoutIcon from '../assets/logout.png';
 import axios from '../axios'; // ✅ your configured axios (withCredentials true)
+import Department from '../components/Department.jsx'; // ✅ ADDED
 
 const AllAdmins = () => {
   const [showPopup, setShowPopup] = useState(false);
@@ -41,7 +42,7 @@ const AllAdmins = () => {
     adminId: '',
     email: '',
     password: '',
-    department: '',
+    department: '',   // will be set via <Department />
   });
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState('');
@@ -121,7 +122,8 @@ const AllAdmins = () => {
         adminId: form.adminId,
         email: form.email,
         password: form.password,
-        department: form.department || null,
+        // send department id if chosen; else null
+        department: form.department ? Number(form.department) : null,
       });
       // append to table
       setAdmins(prev => [data, ...prev]);
@@ -252,7 +254,7 @@ const AllAdmins = () => {
 
         {showPopup && (
           <div className="popup-overlay">
-            <div className="popup-box">
+            <div className="popup-box" style={{ overflow: 'visible' /* so the dropdown isn't clipped */ }}>
               <div className="popup-header">
                 <h3>Add Admin</h3>
                 <img src={closeIcon} alt="Close" className="close-icon" onClick={() => setShowPopup(false)} />
@@ -290,13 +292,12 @@ const AllAdmins = () => {
                   value={form.password}
                   onChange={onFormChange}
                 />
-                <input
-                  type="text"
+
+                {/* 🔽 Department dropdown with scroll (same as SignUp) */}
+                <Department
                   name="department"
-                  placeholder="Department"
-                  className="popup-input"
                   value={form.department}
-                  onChange={onFormChange}
+                  onChange={onFormChange} // expects e.target = { name: 'department', value: <id> }
                 />
 
                 {saveErr && <div style={{ color: 'red', fontSize: 12, marginTop: 6 }}>{saveErr}</div>}

@@ -255,50 +255,60 @@ public function listApprovedStudents(Request $request)
     }
 
      public function addAdmin(Request $request)
-    {
-        $data = $request->validate([
-            'adminId'    => ['required','string','max:32', Rule::unique('users','id')],
-            'name'       => ['required','string','max:255'],
-            'email'      => ['required','email','max:255', Rule::unique('users','email')],
-            'password'   => ['required','string','min:6'],
-            'department' => ['nullable','string','max:255'],
+{
+    $data = $request->validate([
+        'adminId'    => ['required','string','max:32', Rule::unique('users','id')],
+        'name'       => ['required','string','max:255'],
+        'email'      => ['required','email','max:255', Rule::unique('users','email')],
+        'password'   => ['required','string','min:6'],
+        'department' => ['nullable','integer','exists:departments,id'],
+    ]);
+
+    $plainPassword = $data['password'];
+    $deptId = array_key_exists('department', $data) && $data['department'] !== null
+        ? (int) $data['department']
+        : null;
+
+    return DB::transaction(function () use ($data, $plainPassword, $deptId) {
+        // Create user
+        $user = User::create([
+            'id'          => $data['adminId'],
+            'name'        => $data['name'],
+            'email'       => $data['email'],
+            'password'    => Hash::make($plainPassword),
+            'role'        => 'admin',
+            'is_approved' => 1,
+            'department'  => $deptId,
         ]);
 
-        $plainPassword = $data['password'];
+        // Create admin row
+        Admin::create([
+            'admin_id' => $data['adminId'],
+        ]);
 
-        return DB::transaction(function () use ($data, $plainPassword) {
-            // Create user (id is the institutional ID)
-            $user = User::create([
-                'id'          => $data['adminId'],
-                'name'        => $data['name'],
-                'email'       => $data['email'],
-                'password'    => Hash::make($plainPassword),
-                'role'        => 'admin',
-                'is_approved' => 1,
-                'department'  => $data['department'] ?? null,
-            ]);
+        // Eager-load department and build SAME payload shape as listApprovedAdmins()
+        $user->load(['dept:id,name,Name']);
+        $departmentName = optional($user->dept)->name
+            ?? optional($user->dept)->Name
+            ?? ($deptId !== null ? (string)$deptId : '—');
 
-            // Create admin row
-            Admin::create([
-                'admin_id'   => $data['adminId'],
-                'department' => $data['department'] ?? null,
-            ]);
+        // Send credentials email
+        Mail::to($user->email)->send(new AdminCredentialsMail(
+            adminName: $user->name,
+            adminId:   $user->id,
+            password:  $plainPassword
+        ));
 
-            // Send credentials email
-            Mail::to($user->email)->send(new AdminCredentialsMail(
-                adminName: $user->name,
-                adminId:   $user->id,
-                password:  $plainPassword
-            ));
+        // Return payload with department NAME
+        return response()->json([
+            'adminId'    => $user->id,
+            'name'       => $user->name,
+            'department' => $departmentName,
+            'role'       => $user->role,
+        ], 201);
+    });
+}
 
-            return response()->json([
-                'name'       => $user->name,
-                'adminId'    => $user->id,
-                'department' => $user->department,
-                'role'       => $user->role,
-            ], 201);
-        });
-    }
 }
 
 

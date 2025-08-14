@@ -1,4 +1,5 @@
-// app/Mail/AdminCredentialsMail.php
+<?php
+
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
@@ -22,7 +23,11 @@ class AdminCredentialsMail extends Mailable
 
     public function build()
     {
-        return $this->subject('Your ProTrack Admin Account')
-            ->view('emails.admin_credentials');
+        return $this->subject('Your PROTRACK Admin Credentials')
+                    ->markdown('emails.admin.credentials', [
+                        'adminName' => $this->adminName,
+                        'adminId'   => $this->adminId,
+                        'password'  => $this->password,
+                    ]);
     }
 }
