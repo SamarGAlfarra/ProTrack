@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB; 
 use Illuminate\Validation\Rule;   
 use App\Mail\AdminCredentialsMail;
+use App\Mail\SupervisorCredentialsMail;
+use App\Mail\StudentCredentialsMail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;   // ✅ add this
 
 
@@ -309,7 +312,166 @@ public function listApprovedStudents(Request $request)
     });
 }
 
+    public function addSupervisor(Request $request)
+    {
+        $data = $request->validate([
+            'supervisorId'       => ['required','string','max:32', Rule::unique('users','id')],
+            'name'               => ['required','string','max:255'],
+            'email'              => ['required','email','max:255', Rule::unique('users','email')],
+            'password'           => ['required','string','min:6'],
+            'department'         => ['nullable','integer','exists:departments,id'], // FK id
+            'educational_degree' => ['nullable','string','max:255'],
+            'projects_no_limit'  => ['nullable','integer','min:1'],
+        ]);
+
+        $plainPassword = $data['password'];
+        $deptId = array_key_exists('department', $data) && $data['department'] !== null
+            ? (int) $data['department']
+            : null;
+        $degree = $data['educational_degree'] ?? 'Not specified';
+        $cap    = $data['projects_no_limit'] ?? 3; // default 3
+
+        return DB::transaction(function () use ($data, $plainPassword, $deptId, $degree, $cap) {
+            // 1) Create user
+            $user = User::create([
+                'id'          => $data['supervisorId'],
+                'name'        => $data['name'],
+                'email'       => $data['email'],
+                'password'    => Hash::make($plainPassword),
+                'role'        => 'supervisor',
+                'is_approved' => 1,
+                'department'  => $deptId,
+            ]);
+
+            // 2) Create supervisor row
+            $sup = Supervisor::create([
+                'supervisor_id'      => $data['supervisorId'],
+                'educational_degree' => $degree,
+                'projects_no_limit'  => $cap,
+            ]);
+
+            // 3) Department name for response
+            $user->load(['dept:id,name,Name']);
+            $departmentName = optional($user->dept)->name
+                ?? optional($user->dept)->Name
+                ?? ($deptId !== null ? (string)$deptId : '—');
+
+            // 4) Send credentials email via Mailable (same style as addAdmin)
+            Mail::to($user->email)->send(new \App\Mail\SupervisorCredentialsMail(
+                supervisorName: $user->name,
+                supervisorId:   $user->id,
+                password:       $plainPassword
+            ));
+
+            // 5) Return payload (matches listApprovedSupervisors)
+            return response()->json([
+                'supervisorId' => $sup->supervisor_id,
+                'name'         => $user->name,
+                'degree'       => $sup->educational_degree ?? 'Not specified',
+                'department'   => $departmentName,
+                'role'         => $user->role,
+                'projects'     => $sup->projects_no_limit,
+            ], 201);
+        });
+    }
+
+        public function addStudent(Request $request)
+    {
+        $data = $request->validate([
+            'studentId'  => ['required','string','max:32', Rule::unique('users','id')],
+            'name'       => ['required','string','max:255'],
+            'email'      => ['required','email','max:255', Rule::unique('users','email')],
+            'password'   => ['required','string','min:6'],
+            'department' => ['nullable','integer','exists:departments,id'], // FK id or null
+        ]);
+
+        $plainPassword = $data['password'];
+        $deptId = array_key_exists('department', $data) && $data['department'] !== null
+            ? (int) $data['department']
+            : null;
+
+        return DB::transaction(function () use ($data, $plainPassword, $deptId) {
+            // 1) Create the user (role: student)
+            $user = User::create([
+                'id'          => $data['studentId'],
+                'name'        => $data['name'],
+                'email'       => $data['email'],
+                'password'    => Hash::make($plainPassword),
+                'role'        => 'student',
+                'is_approved' => 1,
+                'department'  => $deptId,       // nullable FK
+            ]);
+
+            // 2) Create the students row
+            Student::create([
+                'student_id' => $data['studentId'],
+            ]);
+
+            // 3) Get department NAME for immediate display (no refresh needed)
+            $user->load(['dept:id,name,Name']);
+            $departmentName = optional($user->dept)->name
+                ?? optional($user->dept)->Name
+                ?? ($deptId !== null ? (string)$deptId : '—');
+
+            // 4) Send credentials email via a Mailable (same system as addAdmin)
+            //    Make sure you have: use App\Mail\StudentCredentialsMail;
+            Mail::to($user->email)->send(new \App\Mail\StudentCredentialsMail(
+                studentName: $user->name,
+                studentId:   $user->id,
+                password:    $plainPassword
+            ));
+
+            // 5) Return payload matching listApprovedStudents() shape
+            return response()->json([
+                'student_id'      => $user->id,
+                'student_name'    => $user->name,
+                'department'      => $departmentName,
+                'project_id'      => null,          // no project yet
+                'supervisor_name' => null,          // no supervisor yet
+            ], 201);
+        });
+    }
+
+
+    public function updateMe(Request $request)
+{
+    $user = $request->user();
+
+    $request->validate([
+        'phone_number' => ['nullable','string','max:50'],
+        'photo'        => ['nullable','image','mimes:jpg,jpeg,png,gif,webp','max:4096'],
+    ]);
+
+    $data = [];
+    if ($request->has('phone_number')) {
+        $data['phone_number'] = $request->input('phone_number');
+    }
+    if ($request->hasFile('photo')) {
+        if ($user->photo && \Storage::disk('public')->exists($user->photo)) {
+            \Storage::disk('public')->delete($user->photo);
+        }
+        $data['photo'] = $request->file('photo')->store('users', 'public');
+    }
+
+    $user->fill($data);
+    $dirty = $user->getDirty();      // fields that WILL be updated
+
+    $saved = $user->save();          // run the UPDATE
+    $user->refresh();
+
+    return response()->json([
+        'saved'  => $saved,
+        'dirty'  => $dirty,
+        'user'   => $user,
+    ]);
 }
+
+
+}
+
+
+
+
 
 
 

@@ -5,6 +5,7 @@ import peopleIcon from '../assets/delete.png';
 import closeIcon from '../assets/xbutton.png';
 import searchIcon from '../assets/search.png';
 import axios from '../axios'; // ✅ uses your configured axios instance
+import Department from '../components/Department.jsx'; // ✅ ADDED
 
 const AllStudents = () => {
   const [showPopup, setShowPopup] = useState(false);
@@ -53,7 +54,7 @@ const AllStudents = () => {
     };
   }, []);
 
-  // ✅ NEW: fetch approved students + project + supervisor
+  // ✅ fetch approved students + project + supervisor
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -108,7 +109,6 @@ const AllStudents = () => {
 
   const safe = (v) => (v ?? '').toString().toLowerCase();
 
-  // ✅ use fetched rows; keep your search logic
   const filteredStudents = rows.filter((s) =>
     safe(s.student_name).includes(searchTerms.name) &&
     safe(s.student_id).includes(searchTerms.studentId) &&
@@ -116,6 +116,61 @@ const AllStudents = () => {
     safe(s.supervisor_name).includes(searchTerms.supervisor) &&
     safe(s.project_id).includes(searchTerms.projectId)
   );
+
+  // ===== Add Student popup state & handlers (ADDED) =====
+  const [form, setForm] = useState({
+    name: '',
+    studentId: '',
+    email: '',
+    password: '',
+    department: '', // from <Department />
+  });
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState('');
+
+  const onFormChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setSaveErr('');
+
+    if (!form.name || !form.studentId || !form.email || !form.password) {
+      setSaveErr('Name, ID, Email, and Password are required.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      // Send department as FK id (or null)
+      const payload = {
+        name: form.name,
+        studentId: form.studentId,
+        email: form.email,
+        password: form.password,
+        department: form.department ? Number(form.department) : null,
+      };
+
+      // Backend should create user+student and return:
+      // { student_id, student_name, department, project_id, supervisor_name }
+      const { data } = await axios.post('/admin/addStudent', payload);
+
+      // Prepend new row to table
+      setRows(prev => [data, ...prev]);
+
+      // reset & close
+      setForm({ name: '', studentId: '', email: '', password: '', department: '' });
+      setShowPopup(false);
+    } catch (err) {
+      setSaveErr(err?.response?.data?.message || 'Failed to add student.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  // ======================================================
 
   return (
     <div className="admin-dashboard">
@@ -284,7 +339,7 @@ const AllStudents = () => {
         {/* Add Student Popup */}
         {showPopup && (
           <div className="popup-overlay">
-            <div className="popup-box">
+            <div className="popup-box" style={{ overflow: 'visible' }}>
               <div className="popup-header">
                 <h3>Add Student</h3>
                 <img
@@ -294,13 +349,52 @@ const AllStudents = () => {
                   onClick={() => setShowPopup(false)}
                 />
                 </div>
-              <form className="popup-form">
-                <input type="text" placeholder="Name" className="popup-input" />
-                <input type="text" placeholder="ID" className="popup-input" />
-                <input type="email" placeholder="Email" className="popup-input" />
-                <input type="password" placeholder="Password" className="popup-input" />
-                <input type="text" placeholder="Department" className="popup-input" />
-                <button type="submit" className="popup-submit-btn">Add</button>
+              <form className="popup-form" onSubmit={onSubmit}>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Name"
+                  className="popup-input"
+                  value={form.name}
+                  onChange={onFormChange}
+                />
+                <input
+                  type="text"
+                  name="studentId"
+                  placeholder="ID"
+                  className="popup-input"
+                  value={form.studentId}
+                  onChange={onFormChange}
+                />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  className="popup-input"
+                  value={form.email}
+                  onChange={onFormChange}
+                />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                  className="popup-input"
+                  value={form.password}
+                  onChange={onFormChange}
+                />
+
+                {/* Department selector (same as other pages) */}
+                <Department
+                  name="department"
+                  value={form.department}
+                  onChange={onFormChange} // expects {target:{name:'department', value:<deptId>}}
+                />
+
+                {saveErr && <div style={{ color: 'red', fontSize: 12, marginTop: 6 }}>{saveErr}</div>}
+
+                <button type="submit" className="popup-submit-btn" disabled={saving}>
+                  {saving ? 'Adding…' : 'Add'}
+                </button>
               </form>
             </div>
           </div>

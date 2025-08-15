@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class AuthController extends Controller
@@ -35,9 +36,14 @@ class AuthController extends Controller
     }
 
     // ---------- CURRENT USER ----------
-    public function me()
+    public function me(Request $request)
     {
-        return response()->json(auth('api')->user());
+            $user = $request->user();
+            if (!$user) {
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+            $user->photo_url = $user->photo ? asset('storage/'.$user->photo) : null;
+            return response()->json($user);
     }
 
     // ---------- LOGOUT ----------
@@ -196,23 +202,47 @@ class AuthController extends Controller
     }
 
     // ---------- RESET PASSWORD ----------
+    // app/Http/Controllers/AuthController.php
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
             'password' => 'required|min:6|confirmed',
+            'email'    => 'nullable|email', // now optional if user is logged in
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        // If logged in and email not provided, use the current user’s email
+        $email = $request->email;
+        if (!$email && $request->user()) {
+            $email = $request->user()->email;
+        }
+
+        if (!$email) {
+            return response()->json(['message' => 'Email is required.'], 422);
+        }
+
+        $user = User::where('email', $email)->first();
         if (!$user) {
             return response()->json(['message' => 'User not found.'], 404);
         }
 
+        // If you want to enforce OTP only for unauthenticated users, you can check here.
+        // For the in-profile flow (authenticated), we skip OTP.
+
         $user->password = Hash::make($request->password);
         $user->save();
 
-        DB::table('password_resets')->where('email', $request->email)->delete();
+        // Clean any OTP rows
+        DB::table('password_resets')->where('email', $email)->delete();
 
-        return response()->json(['message' => 'Password updated successfully.']);
+        // ✅ Send confirmation email
+        Mail::raw(
+            "Hello {$user->name},\n\nYour PROTRACK password was changed successfully. If this wasn’t you, contact support immediately.\n\nBest regards,\nPROTRACK Team",
+            function ($message) use ($user) {
+                $message->to($user->email)->subject('Your PROTRACK password was changed');
+            }
+        );
+
+        return response()->json(['message' => 'Password updated successfully. A confirmation email was sent.']);
     }
+
 }

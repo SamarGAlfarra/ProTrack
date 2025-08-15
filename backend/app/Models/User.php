@@ -6,13 +6,15 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use App\Models\Department;
+use Illuminate\Support\Facades\Storage; 
+
 class User extends Authenticatable implements JWTSubject
 {
     use Notifiable;
 
     public $incrementing = false;
     protected $primaryKey = 'id';
-    protected $keyType = 'int';
+    protected $keyType = 'string'; 
     public $timestamps = false;
 public function dept()
 {
@@ -26,6 +28,13 @@ public function dept()
     protected $casts = [
     'is_approved' => 'boolean',
     ];
+
+    protected $appends = ['photo_url'];
+
+    public function getPhotoUrlAttribute()
+    {
+        return $this->photo ? Storage::disk('public')->url($this->photo) : null;
+    }
 
     // JWT-required methods
     public function getJWTIdentifier()

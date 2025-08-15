@@ -7,6 +7,7 @@ import closeIcon from '../assets/xbutton.png';
 import searchIcon from '../assets/search.png';
 import logoutIcon from '../assets/logout.png';
 import axios from '../axios'; // ✅ shared axios instance
+import Department from '../components/Department.jsx'; // ✅ ADDED
 
 const AllSupervisors = () => {
   const [showPopup, setShowPopup] = useState(false);
@@ -34,6 +35,18 @@ const AllSupervisors = () => {
   });
 
   const [firstName, setFirstName] = useState('');
+
+  // 👇 ADDED: form state for Add Supervisor
+  const [form, setForm] = useState({
+    name: '',
+    supervisorId: '',
+    email: '',
+    password: '',
+    department: '',         // bound to <Department />
+    degree: '',             // educational degree text
+  });
+  const [saving, setSaving] = useState(false);          // 👈 ADDED
+  const [saveErr, setSaveErr] = useState('');           // 👈 ADDED
 
   useEffect(() => {
     let mounted = true;
@@ -120,6 +133,59 @@ const AllSupervisors = () => {
     String(sup.role || '').toLowerCase().includes(searchTerms.role) &&
     String(sup.projects ?? '').toLowerCase().includes(searchTerms.projects)
   );
+
+  // 👇 ADDED: popup change + submit handlers
+  const onFormChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setSaveErr('');
+
+    if (!form.name || !form.supervisorId || !form.email || !form.password) {
+      setSaveErr('Name, ID, Email, and Password are required.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      // Build payload. Department is a FK id; projects_no_limit defaults to 3.
+      const payload = {
+        name: form.name,
+        supervisorId: form.supervisorId,
+        email: form.email,
+        password: form.password,
+        educational_degree: form.degree || 'Not specified',
+        department: form.department ? Number(form.department) : null,
+        projects_no_limit: 3,
+      };
+
+      // Backend endpoint that creates user+supervisor and returns the same shape
+      // as listApprovedSupervisors(): { supervisorId, name, degree, department, role, projects }
+      const { data } = await axios.post('/admin/addSupervisor', payload);
+
+      // Prepend to table
+      setSupervisors(prev => [data, ...prev]);
+
+      // Reset & close
+      setForm({
+        name: '',
+        supervisorId: '',
+        email: '',
+        password: '',
+        department: '',
+        degree: '',
+      });
+      setShowPopup(false);
+    } catch (err) {
+      setSaveErr(err?.response?.data?.message || 'Failed to add supervisor.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="admin-dashboard">
@@ -306,7 +372,7 @@ const AllSupervisors = () => {
         {/* Add Supervisor Popup */}
         {showPopup && (
           <div className="popup-overlay">
-            <div className="popup-box">
+            <div className="popup-box" style={{ overflow: 'visible' }}>
               <div className="popup-header">
                 <h3>Add Supervisor</h3>
                 <img
@@ -316,14 +382,61 @@ const AllSupervisors = () => {
                   onClick={() => setShowPopup(false)}
                 />
               </div>
-              <form className="popup-form">
-                <input type="text" placeholder="Name" className="popup-input" />
-                <input type="text" placeholder="ID" className="popup-input" />
-                <input type="email" placeholder="Email" className="popup-input" />
-                <input type="password" placeholder="Password" className="popup-input" />
-                <input type="text" placeholder="Department" className="popup-input" />
-                <input type="text" placeholder="Educational Degree" className="popup-input" />
-                <button type="submit" className="popup-submit-btn">Add</button>
+              <form className="popup-form" onSubmit={onSubmit}>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Name"
+                  className="popup-input"
+                  value={form.name}
+                  onChange={onFormChange}
+                />
+                <input
+                  type="text"
+                  name="supervisorId"
+                  placeholder="ID"
+                  className="popup-input"
+                  value={form.supervisorId}
+                  onChange={onFormChange}
+                />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  className="popup-input"
+                  value={form.email}
+                  onChange={onFormChange}
+                />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                  className="popup-input"
+                  value={form.password}
+                  onChange={onFormChange}
+                />
+
+                {/* Department selector (same as Add Admin) */}
+                <Department
+                  name="department"
+                  value={form.department}
+                  onChange={onFormChange} // expects {target:{name:'department', value:<id>}}
+                />
+
+                <input
+                  type="text"
+                  name="degree"
+                  placeholder="Educational Degree"
+                  className="popup-input"
+                  value={form.degree}
+                  onChange={onFormChange}
+                />
+
+                {saveErr && <div style={{ color: 'red', fontSize: 12, marginTop: 6 }}>{saveErr}</div>}
+
+                <button type="submit" className="popup-submit-btn" disabled={saving}>
+                  {saving ? 'Adding…' : 'Add'}
+                </button>
               </form>
             </div>
           </div>

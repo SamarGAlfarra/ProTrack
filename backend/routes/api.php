@@ -31,6 +31,8 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
 
     // General user info
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me', [AdminController::class, 'updateMe']);  
+    Route::post('/me/password', [AuthController::class, 'resetPassword']); 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
@@ -81,7 +83,8 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
         Route::post('/admin/users/{id}/reject',  [AdminController::class, 'rejectUser']);
 
         Route::post('/admin/addAdmin', [AdminController::class, 'addAdmin']); // create admin
-
+        Route::post('/admin/addSupervisor', [AdminController::class, 'addSupervisor']); // create Supervisor
+        Route::post('/admin/addStudent', [AdminController::class, 'addStudent']); // create Student
     });
 
 });
