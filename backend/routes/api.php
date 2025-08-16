@@ -7,6 +7,8 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\ProfilePhotoController;
+use App\Http\Controllers\MeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,15 +33,14 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
 
     // General user info
     Route::get('/me', [AuthController::class, 'me']);
-    Route::put('/me', [AdminController::class, 'updateMe']);  
     Route::post('/me/password', [AuthController::class, 'resetPassword']); 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
     // ===== My Profile (for any authenticated user) =====
-    Route::get('/profile',        [ProfileController::class, 'show']);
+/*     Route::get('/profile',        [ProfileController::class, 'show']);
     Route::put('/profile',        [ProfileController::class, 'update']);
-    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
+    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']); */
 
     // ===== Student-only =====
     Route::middleware('role:student')->group(function () {
@@ -89,9 +90,18 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
 
 });
 
+Route::middleware('auth:api')->put('/me', [MeController::class,'update']);
+
+Route::middleware('auth:api')->group(function () {
+    Route::post('/me/photo', [ProfilePhotoController::class, 'update']); // or PUT if you prefer
+});
+
+
 /*
 |--------------------------------------------------------------------------
 | Optional: health check
 |--------------------------------------------------------------------------
 */
 Route::get('/health', fn () => response()->json(['ok' => true]));
+
+

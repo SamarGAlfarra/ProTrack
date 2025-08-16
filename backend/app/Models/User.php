@@ -33,7 +33,10 @@ public function dept()
 
     public function getPhotoUrlAttribute()
     {
-        return $this->photo ? Storage::disk('public')->url($this->photo) : null;
+        $p = $this->photo;
+        if (!$p || $p === 'null') return null;
+        if (!Storage::disk('public')->exists($p)) return null;
+        return asset('storage/'.$p);
     }
 
     // JWT-required methods

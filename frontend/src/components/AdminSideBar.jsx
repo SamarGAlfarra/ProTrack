@@ -60,7 +60,12 @@ const AdminSidebar = () => {
       </div>
 
       <div className="profile-box">
-        <img src={avatarIcon} alt="Avatar" className="avatar" />
+        {/* ADDED: show user's photo if present, otherwise the default avatar */}
+        <img
+          src={me?.photo_url ? me.photo_url : avatarIcon}
+          alt="Avatar"
+          className="avatar"
+        />
         {!isCollapsed && (
           <div className="profile-text">
             <h4>

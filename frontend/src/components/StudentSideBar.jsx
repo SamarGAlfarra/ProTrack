@@ -15,9 +15,10 @@ const StudentSideBar = () => {
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // ⬇️ إضافات لعرض اسم الطالب و ID
+  // ⬇️ بيانات المستخدم
   const [firstName, setFirstName] = useState("");
   const [userId, setUserId] = useState("");
+  const [photoUrl, setPhotoUrl] = useState(null);
   const [loadingMe, setLoadingMe] = useState(true);
 
   useEffect(() => {
@@ -29,17 +30,18 @@ const StudentSideBar = () => {
         const name = data?.name || "";
         setFirstName((name || "").split(" ")[0] || "User");
         setUserId(data?.id ?? "");
+        setPhotoUrl(data?.photo_url ?? null);
       } catch (e) {
         if (!mounted) return;
         setFirstName("User");
         setUserId("");
+        setPhotoUrl(null);
       } finally {
         if (mounted) setLoadingMe(false);
       }
     })();
     return () => { mounted = false; };
   }, []);
-  // ⬆️ انتهت الإضافات
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -64,7 +66,12 @@ const StudentSideBar = () => {
       </div>
 
       <div className="profile-box">
-        <img src={avatarIcon} alt="Avatar" className="avatar" />
+        {/* ✅ إذا كان للمستخدم صورة نعرضها وإلا نعرض الافتراضية */}
+        <img 
+          src={photoUrl ? photoUrl : avatarIcon} 
+          alt="Avatar" 
+          className="avatar" 
+        />
         {!isCollapsed && (
           <div className="profile-text">
             <h4>Hi, {loadingMe ? "..." : firstName}</h4>

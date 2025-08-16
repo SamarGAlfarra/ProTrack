@@ -114,4 +114,30 @@ export const uploadProfilePhoto = async (file) => {
 export const createAdmin = (payload) => api.post('/admins', payload);
 
 
+async function handleSave() {
+  setSaving(true);
+  setError(null);
+  try {
+    // if you’re NOT uploading a photo now, send JSON:
+    const { data } = await axios.put("/me", { phone_number: phone });
+
+    // reflect instantly in this page
+    setPhone(data.phone_number ?? "");
+
+    // if you keep user info in context, update it too:
+    setCurrentUser?.((u) => ({ ...u, phone_number: data.phone_number }));
+
+    // tiny toast/notice
+    // toast.success("Profile updated");
+  } catch (e) {
+    // show server validation message if any
+    const msg = e?.response?.data?.message || "Failed to update phone number";
+    setError(msg);
+  } finally {
+    setSaving(false);
+  }
+}
+
+
+
 export default instance;

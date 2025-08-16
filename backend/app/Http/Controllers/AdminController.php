@@ -432,40 +432,7 @@ public function listApprovedStudents(Request $request)
         });
     }
 
-
-    public function updateMe(Request $request)
-{
-    $user = $request->user();
-
-    $request->validate([
-        'phone_number' => ['nullable','string','max:50'],
-        'photo'        => ['nullable','image','mimes:jpg,jpeg,png,gif,webp','max:4096'],
-    ]);
-
-    $data = [];
-    if ($request->has('phone_number')) {
-        $data['phone_number'] = $request->input('phone_number');
-    }
-    if ($request->hasFile('photo')) {
-        if ($user->photo && \Storage::disk('public')->exists($user->photo)) {
-            \Storage::disk('public')->delete($user->photo);
-        }
-        $data['photo'] = $request->file('photo')->store('users', 'public');
-    }
-
-    $user->fill($data);
-    $dirty = $user->getDirty();      // fields that WILL be updated
-
-    $saved = $user->save();          // run the UPDATE
-    $user->refresh();
-
-    return response()->json([
-        'saved'  => $saved,
-        'dirty'  => $dirty,
-        'user'   => $user,
-    ]);
-}
-
+    // app/Http/Controllers/AdminController.php
 
 }
 

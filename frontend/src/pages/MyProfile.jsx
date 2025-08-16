@@ -6,26 +6,35 @@ import fallbackAvatar from "../assets/avatar.png";
 import closeIcon from "../assets/xbutton.png";
 import axios from "../axios"; // baseURL="/api", withCredentials: true
 
+const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || "http://127.0.0.1:8000";
+
 const MyProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showResetPopup, setShowResetPopup] = useState(false);
 
+  const [phone, setPhone] = useState("");
+  const [error, setError] = useState(null);
+
+  // >>> ADDED: track original phone to know if it changed
+  const [originalPhone, setOriginalPhone] = useState(""); // <-- ADDED
+
   // server data
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
 
-  // local photo preview/file
+  // image state
   const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null); // blob url
+  const [imgLoaded, setImgLoaded] = useState(false);
 
-  // password popup state
+  // password popup
   const [newPass, setNewPass] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
 
+  // ---------- load profile ----------
   useEffect(() => {
     const fetchMe = async () => {
       try {
@@ -34,7 +43,14 @@ const MyProfile = () => {
         setName(data.name ?? "");
         setEmail(data.email ?? "");
         setPhone(data.phone_number ?? "");
-        setPhotoUrl(data.photo_url ?? "");
+
+        // >>> ADDED: initialize original phone
+        setOriginalPhone(data.phone_number ?? ""); // <-- ADDED
+
+        let url = data.photo_url || "";
+        if (url && !url.startsWith("http")) url = API_ORIGIN + url;
+        if (url) url += (url.includes("?") ? "&" : "?") + "v=" + Date.now();
+        setPhotoUrl(url);
       } catch (e) {
         console.error(e);
         alert("Failed to load profile.");
@@ -45,40 +61,145 @@ const MyProfile = () => {
     fetchMe();
   }, []);
 
+  // reset loader when the remote photo URL changes
+  useEffect(() => {
+    setImgLoaded(false);
+  }, [photoUrl]);
+
+  // cleanup blob url on unmount
+  useEffect(() => {
+    return () => {
+      if (photoPreview?.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
+
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // revoke any old blob
+    if (photoPreview?.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
+
     setPhotoFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => setPhotoPreview(reader.result);
-    reader.readAsDataURL(file);
+    setImgLoaded(false);
+
+    // instant local preview
+    const blobUrl = URL.createObjectURL(file);
+    setPhotoPreview(blobUrl);
   };
 
-  const handleSave = async () => {
-    setSaving(true);
+  const handleSaveBoth = async () => {
+  setSaving(true);
+  setError(null);
+
+  // Build the tasks we actually need to run
+  const tasks = [];
+  if (phone !== originalPhone) {
+    tasks.push({
+      key: "phone",
+      p: axios.put("/me", { phone_number: phone }),
+    });
+  }
+  if (photoFile) {
+    const form = new FormData();
+    form.append("photo", photoFile);
+    tasks.push({
+      key: "photo",
+      p: axios.post("/me/photo", form),
+    });
+  }
+
+  if (tasks.length === 0) {
+    alert("No changes to save.");
+    setSaving(false);
+    return;
+  }
+
+  try {
+    const results = await Promise.allSettled(tasks.map(t => t.p));
+
+    let phoneOK = false, photoOK = false, photoMsg = "", phoneMsg = "";
+
+    results.forEach((res, i) => {
+      const key = tasks[i].key;
+      if (res.status === "fulfilled") {
+        if (key === "phone") {
+          const data = res.value.data;
+          setPhone(data.phone_number ?? "");
+          setOriginalPhone(data.phone_number ?? ""); // mark as saved
+          phoneOK = true;
+          phoneMsg = "Phone updated";
+        } else if (key === "photo") {
+          const data = res.value.data;
+          const raw = data.photo_url || "";
+          const absolute = raw.startsWith("http") ? raw : API_ORIGIN + raw;
+          const freshUrl = `${absolute}${absolute.includes("?") ? "&" : "?"}v=${Date.now()}`;
+          setPhotoUrl(freshUrl);
+          // keep preview until <img> loads, then your onLoad will clear it
+          setPhotoFile(null);
+
+          // >>> ADDED: clear the file input so the same file can be chosen again
+          const input = document.querySelector('input[type="file"]'); // <-- ADDED
+          if (input) input.value = ""; // <-- ADDED
+
+          photoOK = true;
+          photoMsg = "Photo updated";
+        }
+      } else {
+        const errMsg =
+          res.reason?.response?.data?.message ||
+          res.reason?.message ||
+          "Request failed";
+        if (key === "phone") phoneMsg = `Phone failed: ${errMsg}`;
+        if (key === "photo") photoMsg = `Photo failed: ${errMsg}`;
+      }
+    });
+
+    // Friendly summary
+    if (phoneOK && photoOK) alert("Profile updated (phone + photo).");
+    else if (phoneOK || photoOK) alert([phoneMsg, photoMsg].filter(Boolean).join(" | "));
+    else alert("Nothing was updated. Please try again.");
+  } catch (e) {
+    console.error(e);
+    setError(e?.response?.data?.message || "Failed to update profile");
+  } finally {
+    setSaving(false);
+  }
+};
+
+  const handleSavePhoto = async () => {
+    if (!photoFile) return alert("Choose a photo first.");
     try {
       const form = new FormData();
-      form.append("phone_number", phone || "");
-      if (photoFile) form.append("photo", photoFile);
+      form.append("photo", photoFile);
 
-      console.log("sending update:", { phone, hasPhoto: !!photoFile });
-      const { data } = await axios.put("/me", form);
-      console.log("updateMe response:", data);
+      const { data } = await axios.post("/me/photo", form);
 
+      const raw = data.photo_url || "";
+      const absolute = raw.startsWith("http") ? raw : API_ORIGIN + raw;
+      const freshUrl = `${absolute}${absolute.includes("?") ? "&" : "?"}v=${Date.now()}`;
+      setPhotoUrl(freshUrl);
 
-
-      setPhone(data.phone_number ?? "");
-      setPhotoUrl(data.photo_url ?? "");
       setPhotoFile(null);
-      setPhotoPreview(null);
-      alert("Profile updated.");
+      alert("Photo updated!");
     } catch (e) {
-      if (e.response?.status === 422) {
-        const errs = e.response.data?.errors || {};
-        alert(Object.values(errs).flat().join('\n'));
-      } else {
-        alert(e.response?.data?.message || 'Update failed');
-      }
+      console.error(e);
+      alert(e?.response?.data?.message || "Failed to update photo");
+    }
+  };
+
+  // ---------- phone only ----------
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const { data } = await axios.put("/me", { phone_number: phone });
+      setPhone(data.phone_number ?? "");
+      alert("Phone number updated!");
+    } catch (e) {
+      console.error(e);
+      const msg = e?.response?.data?.message || "Failed to update phone number";
+      setError(msg);
     } finally {
       setSaving(false);
     }
@@ -100,7 +221,8 @@ const MyProfile = () => {
     }
   };
 
-  const avatarToShow = photoPreview || photoUrl || fallbackAvatar;
+  // Always show preview if it exists; otherwise remote; otherwise fallback
+  const effectiveSrc = photoPreview || photoUrl || fallbackAvatar;
 
   if (loading) {
     return (
@@ -120,7 +242,25 @@ const MyProfile = () => {
 
         <div className="profile-header">
           <div className="profile-image-wrapper">
-            <img src={avatarToShow} alt="Profile" className="profile-image" />
+            <img
+              key={photoUrl} // re-render on network URL change
+              src={effectiveSrc}
+              alt="Profile"
+              className="profile-image"
+              onLoad={() => {
+                setImgLoaded(true);
+                // Once the network image (photoUrl) has loaded, drop the blob preview
+                if (photoPreview?.startsWith("blob:") && effectiveSrc === photoUrl) {
+                  URL.revokeObjectURL(photoPreview);
+                  setPhotoPreview(null);
+                }
+              }}
+              onError={(e) => {
+                console.warn("Image failed:", e.currentTarget.src);
+                if (photoPreview) e.currentTarget.src = photoPreview;
+                else e.currentTarget.src = fallbackAvatar;
+              }}
+            />
             <label className="edit-photo-icon">
               <img src={editIcon} alt="Edit" />
               <input
@@ -132,25 +272,21 @@ const MyProfile = () => {
             </label>
           </div>
 
-          {/* Show the user's name beside the photo */}
           <div className="profile-name-container">
             <span>{name || "—"}</span>
           </div>
         </div>
 
-        {/* ID fixed/read-only */}
         <div className="form-group">
           <label>ID</label>
           <input type="text" className="profile-input" value={id} readOnly />
         </div>
 
-        {/* Email shown (read-only) */}
         <div className="form-group">
           <label>Email</label>
           <input type="email" className="profile-input" value={email} readOnly />
         </div>
 
-        {/* Editable phone number */}
         <div className="form-group">
           <label>Phone Number</label>
           <input
@@ -166,9 +302,16 @@ const MyProfile = () => {
           <span className="reset-password-link" onClick={() => setShowResetPopup(true)}>
             Reset Password
           </span>
-          <button className="save-button" onClick={handleSave} disabled={saving}>
+          <button className="save-btn" onClick={handleSaveBoth} disabled={saving}>
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+{/*           <button className="save-btn" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </button>
+          <button className="save-btn" onClick={handleSavePhoto} disabled={!photoFile}>
+            Save Photo
+          </button> */}
+          {error && <p className="error">{error}</p>}
         </div>
 
         {showResetPopup && (
