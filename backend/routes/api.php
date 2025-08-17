@@ -33,34 +33,37 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
 
     // General user info
     Route::get('/me', [AuthController::class, 'me']);
-    Route::post('/me/password', [AuthController::class, 'resetPassword']); 
+    Route::post('/me/password', [AuthController::class, 'resetPassword']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
-
-    // ===== My Profile (for any authenticated user) =====
-/*     Route::get('/profile',        [ProfileController::class, 'show']);
-    Route::put('/profile',        [ProfileController::class, 'update']);
-    Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto']); */
 
     // ===== Student-only =====
     Route::middleware('role:student')->group(function () {
         Route::get('/student/dashboard', fn () => response()->json(['message' => 'Welcome Student']));
 
-        // معلومات رأس الصفحة
+        // رأس الصفحة والفريق الحالي والأعضاء
         Route::get('/student/header',       [StudentController::class, 'header']);
         Route::get('/student/team',         [StudentController::class, 'currentTeam']);
         Route::get('/student/team/members', [StudentController::class, 'teamMembers']);
 
-        // طلبات فريقي (كأدمن)
-        Route::get('/student/team/requests',                        [StudentController::class, 'pendingRequests']);
-        Route::post('/student/team/requests/{studentId}/approve',   [StudentController::class, 'approveRequest']);
-        Route::post('/student/team/requests/{studentId}/reject',    [StudentController::class, 'rejectRequest']);
-        Route::delete('/student/team/members/{studentId}',          [StudentController::class, 'removeMember']);
+        // طلبات فريقي (كأدمن): تعتمد على وجود دالة pendingRequests في الكنترولر
+        Route::get('/student/team/requests',                      [StudentController::class, 'pendingRequests']);
+        Route::post('/student/team/requests/{studentId}/approve', [StudentController::class, 'approveRequest']);
+        Route::post('/student/team/requests/{studentId}/reject',  [StudentController::class, 'rejectRequest']);
+        Route::delete('/student/team/members/{studentId}',        [StudentController::class, 'removeMember']);
 
         // الدعوات/الطلبات الموجهة إليّ كطالب
-        Route::get('/student/my-join-requests',                   [StudentController::class, 'myJoinRequests']);
-        Route::post('/student/my-join-requests/{teamId}/accept',  [StudentController::class, 'acceptMyInvite']);
-        Route::post('/student/my-join-requests/{teamId}/reject',  [StudentController::class, 'rejectMyInvite']);
+        Route::get('/student/my-join-requests',                  [StudentController::class, 'myJoinRequests']);
+        Route::post('/student/my-join-requests/{teamId}/accept', [StudentController::class, 'acceptMyInvite']);
+        Route::post('/student/my-join-requests/{teamId}/reject', [StudentController::class, 'rejectMyInvite']);
+
+        // ===== Create/Edit Team page (الإضافات الجديدة) =====
+        Route::get('/student/create-team/init',                 [StudentController::class, 'createTeamInit']);
+        Route::post('/student/create-team/upsert',              [StudentController::class, 'upsertTeam']);
+        Route::post('/student/create-team/invite/{studentId}',  [StudentController::class, 'inviteStudent']);
+        // إن احتجت لاحقًا:
+        // Route::delete('/student/create-team/invite-or-member/{studentId}', [StudentController::class, 'removeInviteOrMember']);
+        // Route::post('/student/create-team/make-admin/{studentId}',         [StudentController::class, 'makeAdmin']);
     });
 
     // ===== Supervisor-only =====
@@ -83,19 +86,20 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
         Route::post('/admin/users/{id}/approve', [AdminController::class, 'approveUser']);
         Route::post('/admin/users/{id}/reject',  [AdminController::class, 'rejectUser']);
 
-        Route::post('/admin/addAdmin', [AdminController::class, 'addAdmin']); // create admin
-        Route::post('/admin/addSupervisor', [AdminController::class, 'addSupervisor']); // create Supervisor
-        Route::post('/admin/addStudent', [AdminController::class, 'addStudent']); // create Student
+        Route::post('/admin/addAdmin',      [AdminController::class, 'addAdmin']);
+        Route::post('/admin/addSupervisor', [AdminController::class, 'addSupervisor']);
+        Route::post('/admin/addStudent',    [AdminController::class, 'addStudent']);
     });
 
 });
 
+// تحديث بياناتي الأساسية (مثلاً رقم الجوال)
 Route::middleware('auth:api')->put('/me', [MeController::class,'update']);
 
+// رفع الصورة الشخصية
 Route::middleware('auth:api')->group(function () {
-    Route::post('/me/photo', [ProfilePhotoController::class, 'update']); // or PUT if you prefer
+    Route::post('/me/photo', [ProfilePhotoController::class, 'update']); // أو PUT حسب تفضيلك
 });
-
 
 /*
 |--------------------------------------------------------------------------
@@ -103,5 +107,3 @@ Route::middleware('auth:api')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/health', fn () => response()->json(['ok' => true]));
-
-

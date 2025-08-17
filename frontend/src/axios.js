@@ -113,31 +113,32 @@ export const uploadProfilePhoto = async (file) => {
 
 export const createAdmin = (payload) => api.post('/admins', payload);
 
-
-async function handleSave() {
-  setSaving(true);
-  setError(null);
-  try {
-    // if you’re NOT uploading a photo now, send JSON:
-    const { data } = await axios.put("/me", { phone_number: phone });
-
-    // reflect instantly in this page
-    setPhone(data.phone_number ?? "");
-
-    // if you keep user info in context, update it too:
-    setCurrentUser?.((u) => ({ ...u, phone_number: data.phone_number }));
-
-    // tiny toast/notice
-    // toast.success("Profile updated");
-  } catch (e) {
-    // show server validation message if any
-    const msg = e?.response?.data?.message || "Failed to update phone number";
-    setError(msg);
-  } finally {
-    setSaving(false);
-  }
+// ===== Me (basic example used in your component snippet) =====
+export async function updateMePhone(phone) {
+  const { data } = await instance.put("/me", { phone_number: phone });
+  return data;
 }
 
+// -------------------- Student: Create/Edit Team (الإضافات المطلوبة) --------------------
 
+// تهيئة صفحة إنشاء/تعديل الفريق
+export const initCreateTeam = async (q = "") => {
+  const res = await instance.get("/student/create-team/init", {
+    params: q ? { q } : undefined,
+  });
+  return res.data; // { team, members, candidates }
+};
+
+// إنشاء فريق جديد أو تعديل اسم الفريق الحالي
+export const upsertTeam = async (name) => {
+  const res = await instance.post("/student/create-team/upsert", { name });
+  return res.data; // { team_id, message }
+};
+
+// دعوة طالب للانضمام للفريق (Pending)
+export const inviteStudent = async (studentId) => {
+  const res = await instance.post(`/student/create-team/invite/${studentId}`);
+  return res.data; // { message }
+};
 
 export default instance;

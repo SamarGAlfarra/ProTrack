@@ -22,13 +22,12 @@ const StudentDashboard = () => {
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [isTeamMode, setIsTeamMode] = useState(false);
 
-  // 🆕 حالة الـ Toast
+  // Toast state
   const [toastMsg, setToastMsg] = useState("");
   const [showToast, setShowToast] = useState(false);
 
-  // دالة إظهار الـ Toast
   const triggerToast = (msg) => {
-    setToastMsg(msg);
+    setToastMsg(String(msg || ""));
     setShowToast(true);
     setTimeout(() => {
       setShowToast(false);
@@ -49,6 +48,7 @@ const StudentDashboard = () => {
 
   const fetchMyRequests = async () => {
     try {
+      // أولًا: دعوات واصلة لي كطالب
       const resMine = await axios.get("/student/my-join-requests", { withCredentials: true });
       const mine = resMine?.data?.requests || [];
       if (mine.length > 0) {
@@ -56,6 +56,7 @@ const StudentDashboard = () => {
         setIsTeamMode(false);
         return;
       }
+      // ثانيًا: لو أنا أدمن، طلبات فريقي المعلّقة
       const resTeam = await axios.get("/student/team/requests", { withCredentials: true });
       setMyRequests(resTeam?.data?.requests || []);
       setIsTeamMode(true);
@@ -66,30 +67,45 @@ const StudentDashboard = () => {
     }
   };
 
+  // تحديث شامل
+  const refreshAll = async () => {
+    await Promise.all([fetchMembers(), fetchMyRequests()]);
+  };
+
   const handleRemoveMember = async (studentId) => {
     try {
       await axios.delete(`/student/team/members/${studentId}`, { withCredentials: true });
       setMembers((prev) => prev.filter((m) => m.student_id !== studentId));
       triggerToast("Member removed");
     } catch (e) {
+      const msg = e?.response?.data?.message || "Remove member failed";
+      triggerToast(msg);
       console.error("Remove member failed", e?.response?.data || e);
     }
   };
 
   const handleAcceptInvite = async (req) => {
     const prev = [...myRequests];
+
+    // تفاؤليًا: شيل الصف (يغطي حالتي الطالب/الأدمن)
     setMyRequests((curr) => curr.filter((r) => r.team_id !== req.team_id || r.student_id !== req.student_id));
+    setMyRequests((curr) => curr.filter((r) => r.team_id !== req.team_id));
+
     try {
       if (isTeamMode) {
+        // أنا أدمن وأوافق على طالب معيّن
         await axios.post(`/student/team/requests/${req.student_id}/approve`, {}, { withCredentials: true });
       } else {
+        // أنا طالب وأقبل دعوة لفريق
         await axios.post(`/student/my-join-requests/${req.team_id}/accept`, {}, { withCredentials: true });
       }
-      await fetchMembers();
+      await refreshAll();
       triggerToast("Request approved");
     } catch (e) {
-      console.error("Accept failed", e?.response?.data || e);
       setMyRequests(prev);
+      const msg = e?.response?.data?.message || "Failed to approve request";
+      triggerToast(msg);
+      console.error("Accept failed", e?.response?.data || e);
     }
   };
 
@@ -97,23 +113,28 @@ const StudentDashboard = () => {
     const prevRequests = [...myRequests];
     const prevMembers = [...members];
 
+    // تفاؤليًا: شيل الصف
     setMyRequests((curr) => curr.filter((r) => r.team_id !== req.team_id || r.student_id !== req.student_id));
-
     if (isTeamMode && req.student_id) {
       setMembers((prev) => prev.filter((m) => m.student_id !== req.student_id));
     }
 
     try {
       if (isTeamMode) {
+        // أنا أدمن وأرفض طالب
         await axios.post(`/student/team/requests/${req.student_id}/reject`, {}, { withCredentials: true });
       } else {
+        // أنا طالب وأرفض دعوة
         await axios.post(`/student/my-join-requests/${req.team_id}/reject`, {}, { withCredentials: true });
       }
+      await fetchMyRequests();
       triggerToast("Request rejected");
     } catch (e) {
-      console.error("Reject failed", e?.response?.data || e);
       setMyRequests(prevRequests);
       setMembers(prevMembers);
+      const msg = e?.response?.data?.message || "Failed to reject request";
+      triggerToast(msg);
+      console.error("Reject failed", e?.response?.data || e);
     }
   };
 
@@ -165,20 +186,22 @@ const StudentDashboard = () => {
     <div className="admin-dashboard">
       <StudentSideBar />
 
-      {/* 🆕 Toast message */}
+      {/* Toast */}
       {showToast && (
-        <div style={{
-          position: "fixed",
-          top: "20px",
-          right: "20px",
-          backgroundColor: "#333",
-          color: "#fff",
-          padding: "10px 16px",
-          borderRadius: "6px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-          zIndex: 1000,
-          fontSize: "14px"
-        }}>
+        <div
+          style={{
+            position: "fixed",
+            top: "20px",
+            right: "20px",
+            backgroundColor: "#333",
+            color: "#fff",
+            padding: "10px 16px",
+            borderRadius: "6px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+            zIndex: 1000,
+            fontSize: "14px",
+          }}
+        >
           {toastMsg}
         </div>
       )}
@@ -213,24 +236,39 @@ const StudentDashboard = () => {
                     <tr key={m.student_id}>
                       <td>{idx + 1}</td>
                       <td>{m.student_name}</td>
-                      <td>{String(m.student_id).slice(-3).padStart(3, "0")}</td>
+                      <td>{m.student_id}</td>
                       <td>
                         <div className="action-icons">
                           <span className={`status-badge ${statusClass(m.status)}`}>{m.status}</span>
-                          <img
-                            src={deleteIcon}
-                            className="action-icon"
-                            alt="delete"
-                            title="Remove member"
+
+                          {/* زر حذف العضو */}
+                          <button
+                            type="button"
                             onClick={() => handleRemoveMember(m.student_id)}
-                          />
+                            title="Remove member"
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              padding: 0,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <img
+                              src={deleteIcon}
+                              className="action-icon"
+                              alt="delete"
+                              style={{ display: "block" }}
+                            />
+                          </button>
                         </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} style={{ textAlign: "center" }}>No members yet.</td>
+                    <td colSpan={4} style={{ textAlign: "center" }}>
+                      No members yet.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -264,21 +302,47 @@ const StudentDashboard = () => {
                         <td>{r.admin_name || "-"}</td>
                         <td>
                           <div className="action-icons">
-                            <img
-                              src={approveIcon}
-                              className="action-icon"
-                              alt="approve"
-                              title={disableApprove ? "You are already in another team" : "Accept"}
+                            {/* زر قبول */}
+                            <button
+                              type="button"
                               onClick={() => !disableApprove && handleAcceptInvite(r)}
-                              style={disableApprove ? { opacity: 0.4, pointerEvents: "none" } : {}}
-                            />
-                            <img
-                              src={rejectionIcon}
-                              className="action-icon"
-                              alt="reject"
-                              title="Reject"
+                              disabled={disableApprove}
+                              title={disableApprove ? "You are already in another team" : "Accept"}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                padding: 0,
+                                cursor: disableApprove ? "not-allowed" : "pointer",
+                                opacity: disableApprove ? 0.4 : 1,
+                              }}
+                            >
+                              <img
+                                src={approveIcon}
+                                className="action-icon"
+                                alt="approve"
+                                style={{ display: "block" }}
+                              />
+                            </button>
+
+                            {/* زر رفض */}
+                            <button
+                              type="button"
                               onClick={() => handleRejectInvite(r)}
-                            />
+                              title="Reject"
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                padding: 0,
+                                cursor: "pointer",
+                              }}
+                            >
+                              <img
+                                src={rejectionIcon}
+                                className="action-icon"
+                                alt="reject"
+                                style={{ display: "block" }}
+                              />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -286,7 +350,9 @@ const StudentDashboard = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: "center" }}>There are no joining requests at the moment.</td>
+                    <td colSpan={5} style={{ textAlign: "center" }}>
+                      There are no joining requests at the moment.
+                    </td>
                   </tr>
                 )}
               </tbody>
