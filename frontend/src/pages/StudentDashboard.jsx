@@ -11,354 +11,204 @@ import axios from "../axios";
 const StudentDashboard = () => {
   const navigate = useNavigate();
 
-  const [firstName, setFirstName] = useState("");
-  const [meId, setMeId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [me, setMe] = useState(null);
   const [loadingMe, setLoadingMe] = useState(true);
+  const [myTeam, setMyTeam] = useState({
+    hasApprovedTeam: false,
+    members: [],
+    counters: {},
+    isAdmin: false,
+    team: null,
+  });
+  const [invites, setInvites] = useState({ hideSection: false, invites: [] });
 
-  const [members, setMembers] = useState([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
-
-  const [myRequests, setMyRequests] = useState([]);
-  const [loadingRequests, setLoadingRequests] = useState(true);
-  const [isTeamMode, setIsTeamMode] = useState(false);
-
-  // Toast state
-  const [toastMsg, setToastMsg] = useState("");
-  const [showToast, setShowToast] = useState(false);
-
-  const triggerToast = (msg) => {
-    setToastMsg(String(msg || ""));
-    setShowToast(true);
-    setTimeout(() => {
-      setShowToast(false);
-      setToastMsg("");
-    }, 2000);
-  };
-
-  const fetchMembers = async () => {
+  const fetchAll = async () => {
+    setLoading(true);
     try {
-      const res = await axios.get("/student/team/members", { withCredentials: true });
-      setMembers(res?.data?.members || []);
-    } catch {
-      setMembers([]);
+      const [{ data: teamData }, { data: invData }] = await Promise.all([
+        axios.get("/student/dashboard/my-team"),
+        axios.get("/student/incoming-invites"),
+      ]);
+      setMyTeam(teamData);
+      setInvites(invData);
     } finally {
-      setLoadingMembers(false);
-    }
-  };
-
-  const fetchMyRequests = async () => {
-    try {
-      // أولًا: دعوات واصلة لي كطالب
-      const resMine = await axios.get("/student/my-join-requests", { withCredentials: true });
-      const mine = resMine?.data?.requests || [];
-      if (mine.length > 0) {
-        setMyRequests(mine);
-        setIsTeamMode(false);
-        return;
-      }
-      // ثانيًا: لو أنا أدمن، طلبات فريقي المعلّقة
-      const resTeam = await axios.get("/student/team/requests", { withCredentials: true });
-      setMyRequests(resTeam?.data?.requests || []);
-      setIsTeamMode(true);
-    } catch {
-      setMyRequests([]);
-    } finally {
-      setLoadingRequests(false);
-    }
-  };
-
-  // تحديث شامل
-  const refreshAll = async () => {
-    await Promise.all([fetchMembers(), fetchMyRequests()]);
-  };
-
-  const handleRemoveMember = async (studentId) => {
-    try {
-      await axios.delete(`/student/team/members/${studentId}`, { withCredentials: true });
-      setMembers((prev) => prev.filter((m) => m.student_id !== studentId));
-      triggerToast("Member removed");
-    } catch (e) {
-      const msg = e?.response?.data?.message || "Remove member failed";
-      triggerToast(msg);
-      console.error("Remove member failed", e?.response?.data || e);
-    }
-  };
-
-  const handleAcceptInvite = async (req) => {
-    const prev = [...myRequests];
-
-    // تفاؤليًا: شيل الصف (يغطي حالتي الطالب/الأدمن)
-    setMyRequests((curr) => curr.filter((r) => r.team_id !== req.team_id || r.student_id !== req.student_id));
-    setMyRequests((curr) => curr.filter((r) => r.team_id !== req.team_id));
-
-    try {
-      if (isTeamMode) {
-        // أنا أدمن وأوافق على طالب معيّن
-        await axios.post(`/student/team/requests/${req.student_id}/approve`, {}, { withCredentials: true });
-      } else {
-        // أنا طالب وأقبل دعوة لفريق
-        await axios.post(`/student/my-join-requests/${req.team_id}/accept`, {}, { withCredentials: true });
-      }
-      await refreshAll();
-      triggerToast("Request approved");
-    } catch (e) {
-      setMyRequests(prev);
-      const msg = e?.response?.data?.message || "Failed to approve request";
-      triggerToast(msg);
-      console.error("Accept failed", e?.response?.data || e);
-    }
-  };
-
-  const handleRejectInvite = async (req) => {
-    const prevRequests = [...myRequests];
-    const prevMembers = [...members];
-
-    // تفاؤليًا: شيل الصف
-    setMyRequests((curr) => curr.filter((r) => r.team_id !== req.team_id || r.student_id !== req.student_id));
-    if (isTeamMode && req.student_id) {
-      setMembers((prev) => prev.filter((m) => m.student_id !== req.student_id));
-    }
-
-    try {
-      if (isTeamMode) {
-        // أنا أدمن وأرفض طالب
-        await axios.post(`/student/team/requests/${req.student_id}/reject`, {}, { withCredentials: true });
-      } else {
-        // أنا طالب وأرفض دعوة
-        await axios.post(`/student/my-join-requests/${req.team_id}/reject`, {}, { withCredentials: true });
-      }
-      await fetchMyRequests();
-      triggerToast("Request rejected");
-    } catch (e) {
-      setMyRequests(prevRequests);
-      setMembers(prevMembers);
-      const msg = e?.response?.data?.message || "Failed to reject request";
-      triggerToast(msg);
-      console.error("Reject failed", e?.response?.data || e);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    let mounted = true;
+    fetchAll();
+  }, []);
+
+  const handleCreateTeam = () => navigate("/student/createteam");
+
+    // ✅ Fetch current logged-in user (same approach as AdminDashboard)
+  useEffect(() => {
     (async () => {
       try {
         const { data } = await axios.get("/me", { withCredentials: true });
-        if (!mounted) return;
-        const fullName = data?.name || "";
-        setFirstName(fullName.split(" ")[0] || "User");
-        setMeId(data?.id ?? null);
-      } catch {
-        if (!mounted) return;
-        setFirstName("User");
+        setMe(data);
+      } catch (e) {
+        console.error("Failed to fetch user info");
       } finally {
-        if (mounted) setLoadingMe(false);
+        setLoadingMe(false);
       }
     })();
-    return () => {
-      mounted = false;
-    };
   }, []);
 
-  useEffect(() => {
-    fetchMembers();
-  }, []);
+  // 👇 Extract first name safely
+  const firstName = (me?.name || "").split(" ")[0] || "User";
 
-  useEffect(() => {
-    fetchMyRequests();
-  }, []);
 
-  const handleCreateTeam = () => {
-    navigate("/student/createteam");
+  const removeMember = async (studentId) => {
+    if (!myTeam.isAdmin || !myTeam.team) return;
+    if (!window.confirm("Remove this member?")) return;
+    await axios.delete(`/student/team/${myTeam.team.id}/member/${studentId}`);
+    fetchAll();
   };
 
-  const statusClass = (status) => {
-    const s = (status || "").toLowerCase();
-    if (s === "approved") return "approved";
-    if (s === "rejected") return "rejected";
-    return "pending";
+  const leaveTeam = async () => {
+    if (!myTeam.team) return;
+    if (!window.confirm("Are you sure you want to leave the team?")) return;
+    await axios.post(`/student/team/${myTeam.team.id}/leave`);
+    fetchAll();
   };
 
-  const hasApprovedTeam =
-    !!meId &&
-    members.some((m) => m.student_id === meId && String(m.status || "").toLowerCase() === "approved");
+  const acceptInvite = async (teamId) => {
+    await axios.post(`/student/incoming-invites/${teamId}/accept`);
+    fetchAll();
+  };
+
+  const rejectInvite = async (teamId) => {
+    await axios.post(`/student/incoming-invites/${teamId}/reject`);
+    fetchAll();
+  };
 
   return (
     <div className="admin-dashboard">
       <StudentSideBar />
 
-      {/* Toast */}
-      {showToast && (
-        <div
-          style={{
-            position: "fixed",
-            top: "20px",
-            right: "20px",
-            backgroundColor: "#333",
-            color: "#fff",
-            padding: "10px 16px",
-            borderRadius: "6px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-            zIndex: 1000,
-            fontSize: "14px",
-          }}
-        >
-          {toastMsg}
-        </div>
-      )}
-
       <div className="dashboard-content">
         <p className="welcome-message">
-          Welcome Back, <strong>{loadingMe ? "..." : firstName}</strong>
+          {loadingMe ? "Welcome Back, ..." : `Welcome Back, ${firstName}`}
         </p>
 
-        {/* My Team Members */}
-        <div className="dashboard-section">
-          <div className="dashboard-header">
-            <h3 className="section-title">My Team Members</h3>
-            <button className="add-admin-btn" onClick={handleCreateTeam}>
-              Create/Edit Team
-            </button>
-          </div>
+        {/* Always-visible toolbar for Create/Edit Team */}
+        <div className="dashboard-header" style={{ justifyContent: "flex-end" }}>
+          <button className="add-admin-btn" onClick={handleCreateTeam}>
+            Create/Edit Team
+          </button>
+        </div>
 
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Student Name</th>
-                  <th>Student ID</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!loadingMembers && members && members.length > 0 ? (
-                  members.map((m, idx) => (
-                    <tr key={m.student_id}>
+        {/* My Team Members (shown only if user is approved in a team) */}
+        {myTeam.hasApprovedTeam && (
+          <div className="dashboard-section">
+            <div className="dashboard-header">
+              <h3 className="section-title">My Team Members</h3>
+              {myTeam?.hasApprovedTeam && (
+                <button className="add-admin-btn" onClick={leaveTeam}>
+                  Leave Team
+                </button>
+              )}
+            </div>
+
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Student Name</th>
+                    <th>Student ID</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myTeam.members.map((m, idx) => (
+                    <tr key={m.id}>
                       <td>{idx + 1}</td>
-                      <td>{m.student_name}</td>
-                      <td>{m.student_id}</td>
+                      <td>{m.name}</td>
+                      <td>{m.id}</td>
                       <td>
                         <div className="action-icons">
-                          <span className={`status-badge ${statusClass(m.status)}`}>{m.status}</span>
-
-                          {/* زر حذف العضو */}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveMember(m.student_id)}
-                            title="Remove member"
-                            style={{
-                              background: "transparent",
-                              border: "none",
-                              padding: 0,
-                              cursor: "pointer",
-                            }}
+                          <span
+                            className={`status-badge ${
+                              m.is_approved ? "approved" : "pending"
+                            }`}
                           >
+                            {m.is_approved ? "Approved" : "Pending"}
+                          </span>
+                          {myTeam.isAdmin && !m.is_admin && (
                             <img
                               src={deleteIcon}
                               className="action-icon"
                               alt="delete"
-                              style={{ display: "block" }}
+                              onClick={() => removeMember(m.id)}
+                              style={{ cursor: "pointer" }}
                             />
-                          </button>
+                          )}
                         </div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} style={{ textAlign: "center" }}>
-                      No members yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Incoming Requests */}
-        <div className="dashboard-section">
-          <h3 className="section-title">Incoming Requests</h3>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Team Name</th>
-                  <th>Team's code</th>
-                  <th>Team's Admin</th>
-                  <th>Approval State</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!loadingRequests && myRequests && myRequests.length > 0 ? (
-                  myRequests.map((r, idx) => {
-                    const disableApprove = isTeamMode ? false : hasApprovedTeam;
-                    return (
-                      <tr key={`${r.team_id}-${r.student_id || "me"}`}>
-                        <td>{idx + 1}</td>
-                        <td>{r.team_name}</td>
-                        <td>{r.team_code}</td>
-                        <td>{r.admin_name || "-"}</td>
-                        <td>
-                          <div className="action-icons">
-                            {/* زر قبول */}
-                            <button
-                              type="button"
-                              onClick={() => !disableApprove && handleAcceptInvite(r)}
-                              disabled={disableApprove}
-                              title={disableApprove ? "You are already in another team" : "Accept"}
-                              style={{
-                                background: "transparent",
-                                border: "none",
-                                padding: 0,
-                                cursor: disableApprove ? "not-allowed" : "pointer",
-                                opacity: disableApprove ? 0.4 : 1,
-                              }}
-                            >
-                              <img
-                                src={approveIcon}
-                                className="action-icon"
-                                alt="approve"
-                                style={{ display: "block" }}
-                              />
-                            </button>
-
-                            {/* زر رفض */}
-                            <button
-                              type="button"
-                              onClick={() => handleRejectInvite(r)}
-                              title="Reject"
-                              style={{
-                                background: "transparent",
-                                border: "none",
-                                padding: 0,
-                                cursor: "pointer",
-                              }}
-                            >
-                              <img
-                                src={rejectionIcon}
-                                className="action-icon"
-                                alt="reject"
-                                style={{ display: "block" }}
-                              />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
+        {/* Incoming Requests (only if NOT approved anywhere) */}
+        {!invites.hideSection && (
+          <div className="dashboard-section">
+            <h3 className="section-title">Incoming Requests</h3>
+            <div className="table-wrapper">
+              <table>
+                <thead>
                   <tr>
-                    <td colSpan={5} style={{ textAlign: "center" }}>
-                      There are no joining requests at the moment.
-                    </td>
+                    <th>#</th>
+                    <th>Team Name</th>
+                    <th>Team's code</th>
+                    <th>Team's Admin Approval State</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {invites.invites.map((r, i) => (
+                    <tr key={r.team_id}>
+                      <td>{i + 1}</td>
+                      <td>{r.team_name}</td>
+                      <td>{r.team_id}</td>
+                      <td>
+                        <div className="action-icons">
+                          <img
+                            src={approveIcon}
+                            className="action-icon"
+                            alt="approve"
+                            onClick={() => acceptInvite(r.team_id)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          <img
+                            src={rejectionIcon}
+                            className="action-icon"
+                            alt="reject"
+                            onClick={() => rejectInvite(r.team_id)}
+                            style={{ cursor: "pointer" }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {invites.invites.length === 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: "center" }}>
+                        No pending invites
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

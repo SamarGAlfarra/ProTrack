@@ -4,694 +4,472 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 class StudentController extends Controller
 {
-    /* ===================== Helpers ===================== */
+    // ===== Table names =====
+    private string $T_USERS        = 'users';
+    private string $T_STUDENTS     = 'students';
+    private string $T_TEAMS        = 'teams';
+    private string $T_TEAM_MEMBERS = 'team_members';
+    private string $T_TEAM_APPS    = 'team_applications';
+    private string $T_SEMESTERS    = 'semesters';
 
-    private function meId(Request $request): int
+    // ===== Known PKs (students table uses student_id) =====
+    private string $PK_USER     = 'id';
+    private string $PK_STUDENT  = 'student_id';
+    private string $PK_TEAM     = 'id';
+    private string $PK_SEMESTER = 'id';
+
+    protected function currentSemesterId()
     {
-        return (int) auth()->id();
+        $row = DB::table($this->T_SEMESTERS)->where('is_current', 1)->first();
+        if (!$row) abort(409, 'No current semester set.');
+        return $row->{$this->PK_SEMESTER};
     }
 
-    private function currentSemesterId(): ?int
+    protected function myApprovedTeamId($userId, $semesterId)
     {
-        $row = DB::table('semesters')->where('is_current', true)->first();
-        return $row?->id;
-    }
-
-    private function coalesceTeamName($row): string
-    {
-        $name = $row->name ?? $row->Name ?? null;
-        return $name && trim($name) !== '' ? $name : ('Team #'.$row->id);
-    }
-
-    private function findMyApprovedTeamThisSemester(int $userId): ?object
-    {
-        $semesterId = $this->currentSemesterId();
-        if (!$semesterId) return null;
-
-        $row = DB::table('team_members as tm')
-            ->join('teams as t', 't.id', '=', 'tm.team_id')
-            ->where('tm.student_id', $userId)
-            ->where('tm.is_approved', 1)
-            ->where('t.semester_id', $semesterId)
-            ->select('t.*', 'tm.is_admin')
+        $row = DB::table($this->T_TEAM_MEMBERS)
+            ->join($this->T_TEAMS, "{$this->T_TEAMS}.{$this->PK_TEAM}", '=', "{$this->T_TEAM_MEMBERS}.team_id")
+            ->where("{$this->T_TEAM_MEMBERS}.student_id", $userId)
+            ->where("{$this->T_TEAM_MEMBERS}.is_approved", 1)
+            ->where("{$this->T_TEAMS}.semester_id", $semesterId)
+            ->select("{$this->T_TEAMS}.{$this->PK_TEAM} as team_id")
             ->first();
-
-        if (!$row) return null;
-
-        // تطبيع بعض الحقول
-        $row->coalesced_name = $this->coalesceTeamName($row);
-        $row->members_limit  = isset($row->members_limit) ? (int)$row->members_limit : null;
-        $row->is_admin       = (bool)($row->is_admin ?? 0);
-        return $row;
+        return $row?->team_id;
     }
 
-    private function teamApprovedCount(int $teamId): int
+    protected function isTeamAdmin($userId, $teamId)
     {
-        return (int) DB::table('team_members')
-            ->where('team_id', $teamId)
-            ->where('is_approved', 1)
-            ->count();
+        $team = DB::table($this->T_TEAMS)->where($this->PK_TEAM, $teamId)->first();
+        return $team && (string)$team->team_admin === (string)$userId;
     }
 
-    private function ensureCapacityOrFail(object $team): void
+    // ===== Dashboard: My Team Members =====
+    public function dashboardMyTeam(Request $request)
     {
-        if (!empty($team->members_limit)) {
-            $approvedCount = $this->teamApprovedCount($team->id);
-            if ($approvedCount >= (int) $team->members_limit) {
-                abort(response()->json(['message' => 'Members limit reached.'], 400));
+        try {
+            $userId     = $request->user()->id;
+            $semesterId = $this->currentSemesterId();
+            $teamId     = $this->myApprovedTeamId($userId, $semesterId);
+
+            if (!$teamId) {
+                return response()->json([
+                    'hasApprovedTeam' => false,
+                    'members' => [],
+                    'counters' => ['total'=>0,'approved'=>0,'pending'=>0,'remaining'=>0],
+                    'isAdmin' => false,
+                    'team' => null,
+                ]);
             }
-        }
-    }
 
-    /* 🆕 يحتسب كل الصفوف (Pending + Approved) */
-    private function teamTotalCount(int $teamId): int
-    {
-        return (int) DB::table('team_members')
-            ->where('team_id', $teamId)
-            ->whereIn('is_approved', [0,1]) // نتجاهل المرفوضين -1 إن وُجدوا
-            ->count();
-    }
+            $team = DB::table($this->T_TEAMS)->where($this->PK_TEAM,$teamId)->first();
 
-    /* 🆕 سعة شاملة تشمل الدعوات المعلقة */
-    private function ensureTotalCapacityOrFail(object $team): void
-    {
-        if (!empty($team->members_limit)) {
-            $total = $this->teamTotalCount($team->id);
-            if ($total >= (int) $team->members_limit) {
-                abort(response()->json(['message' => 'Team capacity reached (including pending invites).'], 400));
-            }
-        }
-    }
-
-    /* ===================== Header ===================== */
-
-    public function header(Request $request)
-    {
-        $uid  = $this->meId($request);
-        $user = DB::table('users')->where('id', $uid)->first(['id', 'name']);
-
-        $full  = $user?->name ?: '';
-        $parts = preg_split('/\s+/', trim($full)) ?: [];
-        $first = $parts[0] ?? 'User';
-
-        return response()->json([
-            'id'         => $user?->id,
-            'full_name'  => $full,
-            'first_name' => $first,
-        ]);
-    }
-
-    /* ===================== Current team ===================== */
-
-    public function currentTeam(Request $request)
-    {
-        $uid  = $this->meId($request);
-        $team = $this->findMyApprovedTeamThisSemester($uid);
-
-        if (!$team) {
-            return response()->json(['team' => null]);
-        }
-
-        return response()->json([
-            'team' => [
-                'id'            => $team->id,
-                'name'          => $team->coalesced_name,
-                'code'          => (string) $team->id,
-                'semester_id'   => $team->semester_id,
-                'members_limit' => $team->members_limit,
-                'is_admin'      => (bool) $team->is_admin,
-            ]
-        ]);
-    }
-
-    /* ===================== Team members ===================== */
-
-    public function teamMembers(Request $request)
-    {
-        $uid  = $this->meId($request);
-        $team = $this->findMyApprovedTeamThisSemester($uid);
-
-        if (!$team) return response()->json(['members' => []]);
-
-        $rows = DB::table('team_members as tm')
-            ->join('users as u', 'u.id', '=', 'tm.student_id')
-            ->where('tm.team_id', $team->id)
-            ->select([
-                'u.id as student_id',
-                'u.name as student_name',
-                'tm.is_approved',
-                'tm.is_admin',
-            ])
-            ->orderBy('u.name')
-            ->get();
-
-        $members = $rows->map(function ($r) {
-            $status = match ((int)$r->is_approved) {
-                1       => 'Approved',
-                -1      => 'Rejected',
-                default => 'Pending',
-            };
-            return [
-                'student_id'   => (int) $r->student_id,
-                'student_name' => $r->student_name,
-                'status'       => $status,
-                'is_admin'     => (bool) $r->is_admin,
-            ];
-        })->values();
-
-        return response()->json(['members' => $members]);
-    }
-
-    /* ===================== Incoming requests (student view with constraint) ===================== */
-
-    public function incomingRequests(Request $request)
-    {
-        $uid  = $this->meId($request);
-        $sem  = $this->currentSemesterId();
-
-        if (!$sem) {
-            return response()->json(['requests' => []]);
-        }
-
-        // تحقق إذا الطالب Approved في أي فريق بنفس الفصل
-        $alreadyApproved = DB::table('team_members as tm')
-            ->join('teams as t', 't.id', '=', 'tm.team_id')
-            ->where('tm.student_id', $uid)
-            ->where('tm.is_approved', 1)
-            ->where('t.semester_id', $sem)
-            ->exists();
-
-        if ($alreadyApproved) {
-            // إذا هو Approved بفريق، ما نرجع أي Pending
-            return response()->json(['requests' => []]);
-        }
-
-        // رجّع الدعوات المعلقة له فقط
-        $pending = DB::table('team_members as tm')
-            ->join('teams as t', function ($join) use ($sem) {
-                $join->on('t.id', '=', 'tm.team_id')
-                     ->where('t.semester_id', $sem);
-            })
-            ->leftJoin('users as admin', 'admin.id', '=', 't.team_admin')
-            ->where('tm.student_id', $uid)
-            ->where('tm.is_approved', 0)
-            ->select([
-                't.id as team_id',
-                DB::raw('COALESCE(t.name, t.Name) as team_name'),
-                DB::raw('t.id as team_code'),
-                'admin.id as admin_id',
-                'admin.name as admin_name',
-                DB::raw('tm.student_id as student_id'),
-            ])
-            ->orderBy('t.id')
-            ->get();
-
-        return response()->json(['requests' => $pending]);
-    }
-
-
-    public function approveRequest(Request $request, int $studentId)
-    {
-        $uid  = $this->meId($request);
-        $team = $this->findMyApprovedTeamThisSemester($uid);
-        if (!$team || !(bool) $team->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $semId = $this->currentSemesterId();
-        if (!$semId) return response()->json(['message' => 'No active semester.'], 400);
-
-        // ممنوع لو الطالب Approved في فريق آخر بنفس الفصل
-        $alreadyInOther = DB::table('team_members as tm')
-            ->join('teams as t', 't.id', '=', 'tm.team_id')
-            ->where('tm.student_id', $studentId)
-            ->where('tm.is_approved', 1)
-            ->where('t.semester_id', $semId)
-            ->exists();
-
-        if ($alreadyInOther) {
-            return response()->json([
-                'updated' => false,
-                'message' => 'Student is already a member of another team this semester.',
-            ], 400);
-        }
-
-        // فحص السعة قبل الترقية (Approved فقط)
-        $this->ensureCapacityOrFail($team);
-
-        // وافِق فقط على سجل Pending يخص هذا الفريق
-        $updated = DB::table('team_members')
-            ->where('team_id', $team->id)
-            ->where('student_id', $studentId)
-            ->where('is_approved', 0)
-            ->update(['is_approved' => 1]);
-
-        return response()->json([
-            'updated' => (bool) $updated,
-            'message' => $updated ? 'Member approved.' : 'No pending record found.',
-        ]);
-    }
-
-    public function rejectRequest(Request $request, int $studentId)
-    {
-        $uid  = $this->meId($request);
-        $team = $this->findMyApprovedTeamThisSemester($uid);
-        if (!$team || !(bool) $team->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        // احذف فقط "طلب الانضمام" (الدعوة المعلّقة) حتى لا يُحذف عضو Approved
-        $deleted = DB::table('team_members')
-            ->where('team_id', $team->id)
-            ->where('student_id', $studentId)
-            ->where('is_approved', 0) // مهم: لا نحذف المعتمدين
-            ->delete();
-
-        return response()->json([
-            'deleted' => (bool) $deleted,
-            'message' => $deleted ? 'Request rejected and removed.' : 'No pending record found.',
-        ]);
-    }
-
-
-    public function removeMember(Request $request, int $studentId)
-    {
-        $uid  = $this->meId($request);
-        $team = $this->findMyApprovedTeamThisSemester($uid);
-        if (!$team || !(bool) $team->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        if ($studentId === $uid) {
-            return response()->json(['message' => 'Cannot remove team admin via this endpoint.'], 400);
-        }
-
-        $deleted = DB::table('team_members')
-            ->where('team_id', $team->id)
-            ->where('student_id', $studentId)
-            ->delete();
-
-        return response()->json([
-            'deleted' => (bool) $deleted,
-            'message' => $deleted ? 'Member removed.' : 'Member not found.',
-        ]);
-    }
-
-    /* ===================== دعوات موجهة إليّ كطالب ===================== */
-
-    public function myJoinRequests(Request $request)
-    {
-        $uid = $this->meId($request);
-        $sem = $this->currentSemesterId();
-
-        if (!$sem) return response()->json(['requests' => []]);
-
-        $rows = DB::table('team_members as tm')
-            ->join('teams as t', function ($join) use ($sem) {
-                $join->on('t.id', '=', 'tm.team_id')->where('t.semester_id', $sem);
-            })
-            ->leftJoin('users as admin', 'admin.id', '=', 't.team_admin')
-            ->where('tm.student_id', $uid)
-            ->where('tm.is_approved', 0) // دعواتي المعلقة
-            ->select([
-                't.id as team_id',
-                DB::raw('COALESCE(t.name, t.Name) as team_name'),
-                DB::raw('t.id as team_code'),
-                'admin.id as admin_id',
-                'admin.name as admin_name',
-                DB::raw('tm.student_id as student_id'),
-            ])
-            ->orderBy('t.id')
-            ->get();
-
-        return response()->json(['requests' => $rows]);
-    }
-
-    public function acceptMyInvite(Request $request, int $teamId)
-    {
-        $uid = $this->meId($request);
-        $sem = $this->currentSemesterId();
-        if (!$sem) return response()->json(['message' => 'No active semester.'], 400);
-
-        // هل أنا Approved بفريق آخر؟
-        $already = DB::table('team_members as tm')
-            ->join('teams as t', 't.id', '=', 'tm.team_id')
-            ->where('tm.student_id', $uid)
-            ->where('tm.is_approved', 1)
-            ->where('t.semester_id', $sem)
-            ->exists();
-
-        if ($already) {
-            return response()->json([
-                'message' => 'You are already a member of another team this semester.'
-            ], 400);
-        }
-
-        // هل الدعوة موجودة كبند Pending في نفس الفصل؟
-        $invite = DB::table('team_members as tm')
-            ->join('teams as t', 't.id', '=', 'tm.team_id')
-            ->where('tm.student_id', $uid)
-            ->where('tm.team_id', $teamId)
-            ->where('tm.is_approved', 0)
-            ->where('t.semester_id', $sem)
-            ->select('t.id', 't.members_limit')
-            ->first();
-
-        if (!$invite) {
-            return response()->json(['message' => 'Invite not found or already processed.'], 404);
-        }
-
-        // فحص السعة (Approved فقط)
-        $team = (object)[ 'id' => $teamId, 'members_limit' => $invite->members_limit ];
-        $this->ensureCapacityOrFail($team);
-
-        DB::transaction(function () use ($teamId, $uid) {
-            DB::table('team_members')
-                ->where('team_id', $teamId)
-                ->where('student_id', $uid)
-                ->where('is_approved', 0)
-                ->update(['is_approved' => 1]);
-        });
-
-        return response()->json(['message' => 'Joined team successfully.']);
-    }
-
-    public function rejectMyInvite(Request $request, int $teamId)
-    {
-        $uid = $this->meId($request);
-        $sem = $this->currentSemesterId();
-        if (!$sem) return response()->json(['message' => 'No active semester.'], 400);
-
-        $deleted = DB::table('team_members as tm')
-            ->join('teams as t', 't.id', '=', 'tm.team_id')
-            ->where('tm.student_id', $uid)
-            ->where('tm.team_id', $teamId)
-            ->where('t.semester_id', $sem)
-            ->delete();
-
-        return response()->json([
-            'deleted' => (bool) $deleted,
-            'message' => $deleted ? 'Invite rejected and removed.' : 'Invite not found.',
-        ]);
-    }
-
-    /* ===================== Create/Edit Team page ===================== */
-
-    public function createTeamInit(Request $request)
-    {
-        $uid = $this->meId($request);
-        $sem = $this->currentSemesterId();
-        if (!$sem) return response()->json(['message' => 'No active semester.'], 400);
-
-        // فريقي الحالي (لو موجود وأنا Approved فيه)
-        $myTeam = $this->findMyApprovedTeamThisSemester($uid);
-
-        $teamInfo = null;
-        $members  = [];
-        if ($myTeam) {
-            $teamInfo = [
-                'id'            => $myTeam->id,
-                'name'          => $myTeam->coalesced_name,
-                'team_admin'    => $myTeam->team_admin ?? null,
-                'is_admin'      => (bool)($myTeam->is_admin ?? 0),
-                'members_limit' => $myTeam->members_limit ?? null,
-            ];
-
-            $rows = DB::table('team_members as tm')
-                ->join('users as u', 'u.id', '=', 'tm.student_id')
-                ->where('tm.team_id', $myTeam->id)
-                ->select([
-                    'u.id as student_id',
-                    'u.name as student_name',
-                    'u.phone_number',
-                    'u.email',
-                    'tm.is_approved',
-                    'tm.is_admin',
-                ])
-                ->orderBy('u.name')
+            $rows = DB::table($this->T_TEAM_MEMBERS)
+                ->join($this->T_USERS, "{$this->T_USERS}.{$this->PK_USER}", '=', "{$this->T_TEAM_MEMBERS}.student_id")
+                ->where("{$this->T_TEAM_MEMBERS}.team_id", $teamId)
+                ->select(
+                    "{$this->T_TEAM_MEMBERS}.student_id as id",
+                    "{$this->T_USERS}.name",
+                    "{$this->T_TEAM_MEMBERS}.is_approved",
+                    "{$this->T_TEAM_MEMBERS}.is_admin"
+                )
+                ->orderBy("{$this->T_TEAM_MEMBERS}.is_approved") // pending first
+                ->orderBy("{$this->T_USERS}.name")
                 ->get();
 
-            $members = $rows->map(function ($r) {
-                $status = ((int)$r->is_approved === 1 ? 'Approved' : ((int)$r->is_approved === 0 ? 'Pending' : 'Rejected'));
-                return [
-                    'student_id'   => (int) $r->student_id,
-                    'student_name' => $r->student_name,
-                    'phone'        => $r->phone_number,
-                    'email'        => $r->email,
-                    'status'       => $status,
-                    'is_admin'     => (bool)$r->is_admin,
-                ];
-            })->values();
+            $approved  = $rows->where('is_approved',1)->count();
+            $pending   = $rows->where('is_approved',0)->count();
+            $total     = $rows->count();
+            $remaining = max(0, (int)$team->members_limit - $total);
+
+            return response()->json([
+                'hasApprovedTeam' => true,
+                'members' => $rows,
+                'counters' => compact('total','approved','pending','remaining'),
+                'isAdmin' => $this->isTeamAdmin($userId, $teamId),
+                'team' => ['id'=>$teamId, 'name'=>$team->name, 'members_limit'=>$team->members_limit],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('dashboardMyTeam failed', ['e' => $e]);
+            abort(500, 'dashboardMyTeam error');
         }
-
-        // المرشحون للدعوة: طلاب معتمدون، ليسوا Approved في أي فريق بنفس الفصل
-        $q = trim((string)$request->query('q', ''));
-
-        $approvedStudentIds = DB::table('team_members as tm')
-            ->join('teams as t', 't.id', '=', 'tm.team_id')
-            ->where('tm.is_approved', 1)
-            ->where('t.semester_id', $sem)
-            ->pluck('tm.student_id')
-            ->all();
-
-        $candidatesQuery = DB::table('users')
-            ->where('role', 'student')
-            ->where('is_approved', 1)
-            ->whereNotIn('id', $approvedStudentIds);
-
-        if ($q !== '') {
-            $candidatesQuery->where(function($w) use ($q) {
-                $w->where('name', 'like', "%{$q}%")
-                  ->orWhere('email', 'like', "%{$q}%")
-                  ->orWhere('phone_number', 'like', "%{$q}%")
-                  ->orWhere('id', 'like', "%{$q}%");
-            });
-        }
-
-        if ($myTeam) {
-            $pendingInMyTeam = DB::table('team_members')
-                ->where('team_id', $myTeam->id)
-                ->where('is_approved', 0)
-                ->pluck('student_id')
-                ->all();
-            if (!empty($pendingInMyTeam)) {
-                $candidatesQuery->whereNotIn('id', $pendingInMyTeam);
-            }
-        }
-
-        $candidates = $candidatesQuery
-            ->orderBy('name')
-            ->limit(100)
-            ->get(['id','name','email','phone_number'])
-            ->map(fn($u) => [
-                'student_id'   => (int) $u->id,
-                'student_name' => $u->name,
-                'email'        => $u->email,
-                'phone'        => $u->phone_number,
-            ])->values();
-
-        return response()->json([
-            'team'       => $teamInfo,
-            'members'    => $members,
-            'candidates' => $candidates,
-        ]);
     }
 
-    /**
-     * إنشاء فريق جديد أو تحديث اسم الفريق الحالي (Upsert)
-     * body: { name: string }
-     */
-
-public function upsertTeam(Request $request)
-{
-    $uid = $this->meId($request);
-    $sem = $this->currentSemesterId();
-    if (!$sem) return response()->json(['message' => 'No active semester.'], 400);
-
-    $name = trim((string)$request->input('name', ''));
-    if ($name === '') return response()->json(['message' => 'Team name is required.'], 422);
-
-    $myTeam = $this->findMyApprovedTeamThisSemester($uid);
-
-    // 🚫 داخل فريق لكن ليس أدمن → يمنع تغيير الاسم
-    if ($myTeam && !(bool)$myTeam->is_admin) {
-        return response()->json([
-            'message' => "You can't change team's name or invite others. You are not the team admin"
-        ], 403);
-    }
-
-    // ✅ تعديل الاسم إذا كان أدمن
-    if ($myTeam && (bool)$myTeam->is_admin) {
-        DB::table('teams')->where('id', $myTeam->id)->update(['Name' => $name]);
-        return response()->json(['team_id' => $myTeam->id, 'message' => 'Team name updated.']);
-    }
-
-    // 🆗 إنشاء فريق جديد لو ليس Approved في فريق آخر بهذا الفصل
-    $alreadyApprovedElsewhere = DB::table('team_members as tm')
-        ->join('teams as t', 't.id', '=', 'tm.team_id')
-        ->where('tm.student_id', $uid)
-        ->where('tm.is_approved', 1)
-        ->where('t.semester_id', $sem)
-        ->exists();
-
-    if ($alreadyApprovedElsewhere) {
-        return response()->json(['message' => 'You are already a member of another team this semester.'], 400);
-    }
-
-    $teamId = DB::table('teams')->insertGetId([
-        'Name'          => $name,
-        'team_admin'    => $uid,
-        'semester_id'   => $sem,
-        'members_limit' => 5,
-    ]);
-
-    DB::table('team_members')->insert([
-        'team_id'     => $teamId,
-        'student_id'  => $uid,
-        'is_approved' => 1,
-        'is_admin'    => 1,
-    ]);
-
-    return response()->json(['team_id' => $teamId, 'message' => 'Team created.']);
-}
-
-
-
-
-    /**
-     * دعوة طالب للانضمام لفريقي (Pending)
-     */
-    /**
- * دعوة طالب للانضمام لفريقي (Pending)
- */
-public function inviteStudent(Request $request, int $studentId)
-{
-    $uid = $this->meId($request);
-    $sem = $this->currentSemesterId();
-    if (!$sem) return response()->json(['message' => 'No active semester.'], 400);
-
-    $team = $this->findMyApprovedTeamThisSemester($uid);
-    if (!$team || !(bool)$team->is_admin) {
-        return response()->json([
-            'message' => "You can't change team's name or invite others. You are not the team admin"
-        ], 403);
-    }
-
-    $userOk = DB::table('users')
-        ->where('id', $studentId)
-        ->where('role', 'student')
-        ->where('is_approved', 1)
-        ->exists();
-    if (!$userOk) {
-        return response()->json(['message' => 'Student user not found or not approved.'], 404);
-    }
-
-    $hasStudentRow = DB::table('students')->where('student_id', $studentId)->exists();
-    if (!$hasStudentRow) {
-        DB::table('students')->insert(['student_id' => $studentId]);
-    }
-
-    $alreadyApprovedElsewhere = DB::table('team_members as tm')
-        ->join('teams as t', 't.id', '=', 'tm.team_id')
-        ->where('tm.student_id', $studentId)
-        ->where('tm.is_approved', 1)
-        ->where('t.semester_id', $sem)
-        ->exists();
-    if ($alreadyApprovedElsewhere) {
-        return response()->json(['message' => 'Student already in another team this semester.'], 400);
-    }
-
-    $exists = DB::table('team_members')
-        ->where('team_id', $team->id)
-        ->where('student_id', $studentId)
-        ->exists();
-    if ($exists) {
-        return response()->json(['message' => 'Already invited or member.'], 200);
-    }
-
-    $this->ensureTotalCapacityOrFail($team);
-
-    try {
-        DB::table('team_members')->insert([
-            'team_id'     => $team->id,
-            'student_id'  => $studentId,
-            'is_approved' => 0,
-            'is_admin'    => 0,
-        ]);
-        return response()->json(['message' => 'Invite sent (pending).']);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'message' => 'Could not send invite.',
-            'error'   => $e->getMessage(),
-        ], 400);
-    }
-}
-
-
-
-    /**
-     * إلغاء دعوة Pending أو حذف عضو من فريقي (كأدمن)
-     */
-    public function removeInviteOrMember(Request $request, int $studentId)
+    public function removeMember(Request $request, $teamId, $studentId)
     {
-        $uid  = $this->meId($request);
-        $team = $this->findMyApprovedTeamThisSemester($uid);
-        if (!$team || !(bool)$team->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        $userId = $request->user()->id;
+        if (!$this->isTeamAdmin($userId, $teamId)) abort(403, 'Only team admin.');
+
+        $member = DB::table($this->T_TEAM_MEMBERS)->where(['team_id'=>$teamId,'student_id'=>$studentId])->first();
+        if (!$member) abort(404, 'Member not found.');
+        if ((int)$member->is_admin === 1) abort(409, 'Use leaveTeam to handle admin leaving.');
+
+        DB::table($this->T_TEAM_MEMBERS)->where(['team_id'=>$teamId,'student_id'=>$studentId])->delete();
+        return response()->json(['ok'=>true]);
+    }
+
+    public function leaveTeam(Request $request, $teamId)
+    {
+        $userId     = $request->user()->id;
+        $semesterId = $this->currentSemesterId();
+
+        $team = DB::table($this->T_TEAMS)->where($this->PK_TEAM,$teamId)->first();
+        if (!$team || (string)$team->semester_id !== (string)$semesterId) abort(404,'Team not found.');
+
+        $myRow = DB::table($this->T_TEAM_MEMBERS)->where(['team_id'=>$teamId,'student_id'=>$userId])->first();
+        if (!$myRow) abort(404,'You are not in this team.');
+
+        $members = DB::table($this->T_TEAM_MEMBERS)->where('team_id',$teamId)->get();
+        $hasAnyOther = $members->where('student_id','!=',$userId)->count() > 0;
+
+        if ((int)$myRow->is_admin !== 1) {
+            DB::table($this->T_TEAM_MEMBERS)->where(['team_id'=>$teamId,'student_id'=>$userId])->delete();
+            return response()->json(['ok'=>true,'action'=>'left']);
         }
 
-        if ($studentId === $uid) {
-            return response()->json(['message' => 'Cannot remove team admin via this endpoint.'], 400);
+        $hasApprovedApp = DB::table($this->T_TEAM_APPS)
+            ->where('team_id',$teamId)
+            ->where('status','Approved')
+            ->exists();
+
+        if (!$hasAnyOther && !$hasApprovedApp) {
+            DB::table($this->T_TEAM_MEMBERS)->where('team_id',$teamId)->delete();
+            DB::table($this->T_TEAMS)->where($this->PK_TEAM,$teamId)->delete();
+            return response()->json(['ok'=>true,'action'=>'team_deleted']);
         }
 
-        $deleted = DB::table('team_members')
-            ->where('team_id', $team->id)
-            ->where('student_id', $studentId)
+        $newAdmin = DB::table($this->T_TEAM_MEMBERS)
+            ->where('team_id',$teamId)
+            ->where('student_id','!=',$userId)
+            ->orderByDesc('is_approved')
+            ->orderBy('student_id')
+            ->first();
+
+        if (!$newAdmin) abort(409, 'Cannot leave: no members to transfer admin to.');
+
+        DB::table($this->T_TEAM_MEMBERS)->where(['team_id'=>$teamId,'student_id'=>$userId])->delete();
+        DB::table($this->T_TEAM_MEMBERS)->where(['team_id'=>$teamId,'student_id'=>$newAdmin->student_id])->update(['is_admin'=>1,'is_approved'=>1]);
+        DB::table($this->T_TEAMS)->where($this->PK_TEAM,$teamId)->update(['team_admin'=>$newAdmin->student_id]);
+
+        return response()->json(['ok'=>true,'action'=>'admin_transferred','new_admin'=>$newAdmin->student_id]);
+    }
+
+    // ===== Invites =====
+    public function incomingInvites(Request $request)
+    {
+        try {
+            $userId     = $request->user()->id;
+            $semesterId = $this->currentSemesterId();
+
+            $alreadyApproved = $this->myApprovedTeamId($userId,$semesterId) ? true : false;
+
+            $invites = DB::table($this->T_TEAM_MEMBERS)
+                ->join($this->T_TEAMS, "{$this->T_TEAMS}.{$this->PK_TEAM}", '=', "{$this->T_TEAM_MEMBERS}.team_id")
+                ->where("{$this->T_TEAM_MEMBERS}.student_id",$userId)
+                ->where("{$this->T_TEAM_MEMBERS}.is_approved",0)
+                ->where("{$this->T_TEAMS}.semester_id",$semesterId)
+                ->select("{$this->T_TEAMS}.{$this->PK_TEAM} as team_id","{$this->T_TEAMS}.name as team_name")
+                ->get();
+
+            return response()->json([
+                'hideSection' => $alreadyApproved,
+                'invites' => $invites,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('incomingInvites failed', ['e'=>$e]);
+            abort(500, 'incomingInvites error');
+        }
+    }
+
+    public function acceptInvite(Request $request, $teamId)
+    {
+        $userId     = $request->user()->id;
+        $semesterId = $this->currentSemesterId();
+
+        if ($this->myApprovedTeamId($userId,$semesterId)) abort(409,'Already approved in a team.');
+
+        $team = DB::table($this->T_TEAMS)->where($this->PK_TEAM,$teamId)->first();
+        if (!$team || (string)$team->semester_id !== (string)$semesterId) abort(404,'Team not found.');
+
+        $count = DB::table($this->T_TEAM_MEMBERS)->where('team_id',$teamId)->count();
+        if ($count >= (int)$team->members_limit) abort(409,'Team capacity reached.');
+
+        $row = DB::table($this->T_TEAM_MEMBERS)->where(['team_id'=>$teamId,'student_id'=>$userId])->first();
+        if (!$row) abort(404,'Invite not found.');
+
+        DB::table($this->T_TEAM_MEMBERS)->where(['team_id'=>$teamId,'student_id'=>$userId])->update(['is_approved'=>1]);
+
+        DB::table($this->T_TEAM_MEMBERS)
+            ->join($this->T_TEAMS, "{$this->T_TEAMS}.{$this->PK_TEAM}",'=',"{$this->T_TEAM_MEMBERS}.team_id")
+            ->where("{$this->T_TEAM_MEMBERS}.student_id",$userId)
+            ->where("{$this->T_TEAM_MEMBERS}.is_approved",0)
+            ->where("{$this->T_TEAMS}.semester_id",$semesterId)
             ->delete();
 
-        return response()->json([
-            'deleted' => (bool)$deleted,
-            'message' => $deleted ? 'Invite/member removed.' : 'Nothing to remove.',
-        ]);
+        return response()->json(['ok'=>true]);
     }
 
-    /**
-     * ترقية عضو إلى أدمن للفريق
-     */
-    public function makeAdmin(Request $request, int $studentId)
+    public function rejectInvite(Request $request, $teamId)
     {
-        $uid  = $this->meId($request);
-        $team = $this->findMyApprovedTeamThisSemester($uid);
-        if (!$team || !(bool)$team->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $userId     = $request->user()->id;
+        $semesterId = $this->currentSemesterId();
 
-        // يجب أن يكون Approved قبل الترقية
-        $isApprovedMember = DB::table('team_members')
-            ->where('team_id', $team->id)
-            ->where('student_id', $studentId)
-            ->where('is_approved', 1)
+        DB::table($this->T_TEAM_MEMBERS)
+            ->join($this->T_TEAMS, "{$this->T_TEAMS}.{$this->PK_TEAM}",'=',"{$this->T_TEAM_MEMBERS}.team_id")
+            ->where("{$this->T_TEAM_MEMBERS}.student_id",$userId)
+            ->where("{$this->T_TEAM_MEMBERS}.team_id",$teamId)
+            ->where("{$this->T_TEAMS}.semester_id",$semesterId)
+            ->delete();
+
+        return response()->json(['ok'=>true]);
+    }
+
+    // ===== Create/Edit Team (COMPOSITE ID: <semester><dept><serial>) =====
+    public function saveTeam(Request $request)
+    {
+        $request->validate(['team_name' => 'required|string|max:255']);
+
+        $userId     = $request->user()->id;      // your auth ID equals users.id and equals students.student_id
+        $semester   = DB::table($this->T_SEMESTERS)->where('is_current', 1)->first();
+        if (!$semester) {
+            return response()->json(['ok'=>false,'message'=>'No current semester set.'], 409);
+        }
+        $semesterId = (string)$semester->{$this->PK_SEMESTER};
+        $teamName   = trim($request->input('team_name'));
+
+        // Resolve department id: students.department_id → students.department → users.department_id → users.department
+        $deptColStudent = Schema::hasColumn($this->T_STUDENTS,'department_id') ? 'department_id'
+                          : (Schema::hasColumn($this->T_STUDENTS,'department') ? 'department' : null);
+        $deptColUser    = Schema::hasColumn($this->T_USERS,'department_id') ? 'department_id'
+                          : (Schema::hasColumn($this->T_USERS,'department') ? 'department' : null);
+
+        $studentRow = DB::table($this->T_STUDENTS)->where($this->PK_STUDENT, $userId)->first();
+        $userRow    = DB::table($this->T_USERS)->where($this->PK_USER, $userId)->first();
+
+        $deptId = null;
+        if ($deptColStudent && $studentRow && isset($studentRow->{$deptColStudent})) $deptId = $studentRow->{$deptColStudent};
+        elseif ($deptColUser && $userRow && isset($userRow->{$deptColUser}))          $deptId = $userRow->{$deptColUser};
+
+        if ($deptId === null || $deptId === '') {
+            return response()->json(['ok'=>false,'message'=>'Cannot resolve your department.'], 409);
+        }
+        $deptId = (string)$deptId;
+
+        try {
+            return DB::transaction(function () use ($userId, $semesterId, $deptId, $teamName) {
+
+                // If I already own a team this semester → rename
+                $existing = DB::table($this->T_TEAMS)
+                    ->where(['team_admin' => $userId, 'semester_id' => $semesterId])
+                    ->first();
+
+                if ($existing) {
+                    DB::table($this->T_TEAMS)->where($this->PK_TEAM, $existing->{$this->PK_TEAM})
+                        ->update(['name' => $teamName]);
+                    return response()->json([
+                        'ok' => true,
+                        'team_id' => $existing->{$this->PK_TEAM},
+                        'name' => $teamName,
+                        'is_update' => true
+                    ]);
+                }
+
+                // Guard: if already approved in any team this semester
+                $alreadyApproved = DB::table($this->T_TEAM_MEMBERS)
+                    ->join($this->T_TEAMS, "{$this->T_TEAMS}.{$this->PK_TEAM}", '=', "{$this->T_TEAM_MEMBERS}.team_id")
+                    ->where("{$this->T_TEAM_MEMBERS}.student_id", $userId)
+                    ->where("{$this->T_TEAM_MEMBERS}.is_approved", 1)
+                    ->where("{$this->T_TEAMS}.semester_id", $semesterId)
+                    ->exists();
+
+                if ($alreadyApproved) {
+                    return response()->json(['ok'=>false,'message'=>'You are already approved in a team; cannot create another.'], 409);
+                }
+
+                // Build composite team id = <semester><dept><serial>
+                $prefix    = $semesterId . $deptId;
+                $prefixLen = strlen($prefix);
+
+                $prefixedRows = DB::table($this->T_TEAMS)
+                    ->whereRaw("CAST({$this->PK_TEAM} AS CHAR) LIKE ?", [$prefix.'%'])
+                    ->lockForUpdate()
+                    ->pluck($this->PK_TEAM);
+
+                $maxSerial = 0;
+                foreach ($prefixedRows as $idVal) {
+                    $idStr  = (string)$idVal;
+                    $suffix = substr($idStr, $prefixLen);
+                    if ($suffix !== '' && ctype_digit($suffix)) {
+                        $maxSerial = max($maxSerial, (int)$suffix);
+                    }
+                }
+                $serial = $maxSerial + 1;
+                $newId  = (int)($prefix . $serial);
+
+                // Insert team (explicit id)
+                $membersLimit = Schema::hasColumn($this->T_TEAMS,'members_limit') ? 5 : 5;
+                DB::table($this->T_TEAMS)->insert([
+                    $this->PK_TEAM   => $newId,
+                    'name'           => $teamName,
+                    'team_admin'     => $userId,     // stores student_id (= users.id)
+                    'semester_id'    => $semesterId,
+                    'members_limit'  => $membersLimit,
+                ]);
+
+                // Add admin as approved member
+                DB::table($this->T_TEAM_MEMBERS)->insert([
+                    'team_id'     => $newId,
+                    'student_id'  => $userId,
+                    'is_admin'    => 1,
+                    'is_approved' => 1,
+                ]);
+
+                return response()->json([
+                    'ok'       => true,
+                    'team_id'  => $newId,
+                    'name'     => $teamName,
+                    'is_update'=> false
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::error('saveTeam composite-id error', ['error' => $e->getMessage()]);
+            return response()->json(['ok'=>false,'message'=>'saveTeam failed'], 500);
+        }
+    }
+
+    // ===== People I Can Invite (Admin or Member; member sees list but cannot invite) =====
+    public function peopleICanInvite(Request $request)
+    {
+        try {
+            $userId     = $request->user()->id;
+            $semesterId = $this->currentSemesterId();
+
+            // Try: team where I am admin
+            $team = DB::table($this->T_TEAMS)->where(['team_admin'=>$userId,'semester_id'=>$semesterId])->first();
+            $isAdmin = false;
+
+            if ($team) {
+                $isAdmin = true;
+            } else {
+                // If not admin, try: team where I am (approved) member
+                $memberTeamId = $this->myApprovedTeamId($userId, $semesterId);
+                if ($memberTeamId) {
+                    $team = DB::table($this->T_TEAMS)->where($this->PK_TEAM, $memberTeamId)->first();
+                }
+            }
+
+            if (!$team) {
+                return response()->json(['team'=>null,'isAdmin'=>false,'canInvite'=>false,'people'=>[]]);
+            }
+
+            // Resolve department (prefer students.department_id; fallback to users.department_id/department)
+            $studentDeptCol = Schema::hasColumn($this->T_STUDENTS,'department_id') ? 'department_id'
+                               : (Schema::hasColumn($this->T_STUDENTS,'department') ? 'department' : null);
+            $userDeptCol    = Schema::hasColumn($this->T_USERS,'department_id') ? 'department_id'
+                               : (Schema::hasColumn($this->T_USERS,'department') ? 'department' : null);
+
+            $meStudent = DB::table($this->T_STUDENTS)->where($this->PK_STUDENT,$userId)->first();
+            $meUser    = DB::table($this->T_USERS)->where($this->PK_USER,$userId)->first();
+
+            $myDept = null;
+            if ($studentDeptCol && $meStudent) $myDept = $meStudent->{$studentDeptCol} ?? null;
+            if ($myDept === null && $userDeptCol && $meUser) $myDept = $meUser->{$userDeptCol} ?? null;
+
+            $qName  = strtolower($request->query('name',''));
+            $qPhone = strtolower($request->query('phone',''));
+            $qId    = strtolower($request->query('studentId',''));
+            $qEmail = strtolower($request->query('email',''));
+
+            // Students already approved in ANY team this semester (exclude)
+            $approvedIds = DB::table($this->T_TEAM_MEMBERS)
+                ->join($this->T_TEAMS, "{$this->T_TEAMS}.{$this->PK_TEAM}",'=',"{$this->T_TEAM_MEMBERS}.team_id")
+                ->where("{$this->T_TEAMS}.semester_id",$semesterId)
+                ->where("{$this->T_TEAM_MEMBERS}.is_approved",1)
+                ->pluck("{$this->T_TEAM_MEMBERS}.student_id")
+                ->unique()
+                ->toArray();
+
+            // Already in my team (invited or approved) (exclude)
+            $alreadyInvited = DB::table($this->T_TEAM_MEMBERS)
+                ->where('team_id',$team->{$this->PK_TEAM})
+                ->pluck('student_id')
+                ->unique()
+                ->toArray();
+
+            $people = DB::table($this->T_STUDENTS)
+                ->join($this->T_USERS, "{$this->T_USERS}.{$this->PK_USER}",'=',"{$this->T_STUDENTS}.{$this->PK_STUDENT}")
+                ->when($myDept, function ($q) use ($studentDeptCol, $userDeptCol, $myDept) {
+                    $col = $studentDeptCol
+                        ? "{$this->T_STUDENTS}.{$studentDeptCol}"
+                        : ($userDeptCol ? "{$this->T_USERS}.{$userDeptCol}" : null);
+
+                    if ($col) {
+                        $q->where($col, $myDept);
+                    }
+                })
+                ->whereNotIn("{$this->T_STUDENTS}.{$this->PK_STUDENT}",$approvedIds)
+                ->whereNotIn("{$this->T_STUDENTS}.{$this->PK_STUDENT}",$alreadyInvited)
+                ->when($qName,  fn($q)=>$q->whereRaw("LOWER({$this->T_USERS}.name) LIKE ?",["%$qName%"]))
+                ->when($qPhone, fn($q)=>$q->whereRaw("LOWER({$this->T_USERS}.phone_number) LIKE ?",["%$qPhone%"]))
+                ->when($qEmail, fn($q)=>$q->whereRaw("LOWER({$this->T_USERS}.email) LIKE ?",["%$qEmail%"]))
+                ->when($qId,   fn($q)=>$q->whereRaw("CAST({$this->T_STUDENTS}.{$this->PK_STUDENT} AS CHAR) LIKE ?",["%$qId%"]))
+                ->select("{$this->T_STUDENTS}.{$this->PK_STUDENT} as id","{$this->T_USERS}.name","{$this->T_USERS}.email","{$this->T_USERS}.phone_number")
+                ->orderBy("{$this->T_USERS}.name")
+                ->get();
+
+            $currentCount = DB::table($this->T_TEAM_MEMBERS)->where('team_id',$team->{$this->PK_TEAM})->count();
+            $capacityOk   = $currentCount < (int)$team->members_limit;
+
+            return response()->json([
+                'team'=>[
+                    'id'=>$team->{$this->PK_TEAM},
+                    'name'=>$team->name,
+                    'members_limit'=>(int)$team->members_limit,
+                    'current_count'=>(int)$currentCount,
+                ],
+                'isAdmin'=>$isAdmin,
+                'canInvite'=> ($isAdmin && $capacityOk),
+                'people'=>$people,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('peopleICanInvite failed', ['e'=>$e]);
+            abort(500, 'peopleICanInvite error');
+        }
+    }
+
+    public function sendInvite(Request $request, $studentId)
+    {
+        $userId     = $request->user()->id;
+        $semesterId = $this->currentSemesterId();
+
+        $team = DB::table($this->T_TEAMS)->where(['team_admin'=>$userId,'semester_id'=>$semesterId])->first();
+        if (!$team) abort(409,'You do not own a team this semester.');
+
+        $count = DB::table($this->T_TEAM_MEMBERS)->where('team_id',$team->{$this->PK_TEAM})->count();
+        if ($count >= (int)$team->members_limit) abort(409,'Team capacity reached.');
+
+        $approvedElsewhere = DB::table($this->T_TEAM_MEMBERS)
+            ->join($this->T_TEAMS, "{$this->T_TEAMS}.{$this->PK_TEAM}",'=',"{$this->T_TEAM_MEMBERS}.team_id")
+            ->where("{$this->T_TEAMS}.semester_id",$semesterId)
+            ->where("{$this->T_TEAM_MEMBERS}.student_id",$studentId)
+            ->where("{$this->T_TEAM_MEMBERS}.is_approved",1)
             ->exists();
-        if (!$isApprovedMember) {
-            return response()->json(['message' => 'Member must be approved first.'], 400);
-        }
+        if ($approvedElsewhere) abort(409,'Student already joined another team.');
 
-        DB::transaction(function () use ($team, $studentId) {
-            DB::table('teams')->where('id', $team->id)->update(['team_admin' => $studentId]);
+        $exists = DB::table($this->T_TEAM_MEMBERS)->where(['team_id'=>$team->{$this->PK_TEAM},'student_id'=>$studentId])->exists();
+        if ($exists) abort(409,'Already invited/exists.');
 
-            DB::table('team_members')
-                ->where('team_id', $team->id)
-                ->update(['is_admin' => 0]); // إزالة الأدمن عن الجميع أولًا
+        DB::table($this->T_TEAM_MEMBERS)->insert([
+            'team_id'     => $team->{$this->PK_TEAM},
+            'student_id'  => $studentId,
+            'is_admin'    => 0,
+            'is_approved' => 0,
+        ]);
 
-            DB::table('team_members')
-                ->where('team_id', $team->id)
-                ->where('student_id', $studentId)
-                ->update(['is_admin' => 1]); // ثم تعيين الهدف كأدمن
-        });
-
-        return response()->json(['message' => 'Admin updated.']);
+        return response()->json(['ok'=>true]);
     }
 }

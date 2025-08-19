@@ -38,7 +38,7 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
     // ===== Student-only =====
-    Route::middleware('role:student')->group(function () {
+/*     Route::middleware('role:student')->group(function () {
         Route::get('/student/dashboard', fn () => response()->json(['message' => 'Welcome Student']));
 
         // رأس الصفحة والفريق الحالي والأعضاء
@@ -64,7 +64,7 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
         // إن احتجت لاحقًا:
         // Route::delete('/student/create-team/invite-or-member/{studentId}', [StudentController::class, 'removeInviteOrMember']);
         // Route::post('/student/create-team/make-admin/{studentId}',         [StudentController::class, 'makeAdmin']);
-    });
+    }); */
 
     // ===== Supervisor-only =====
     Route::middleware('role:supervisor')->group(function () {
@@ -90,6 +90,31 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
         Route::post('/admin/addSupervisor', [AdminController::class, 'addSupervisor']);
         Route::post('/admin/addStudent',    [AdminController::class, 'addStudent']);
     });
+
+
+
+    Route::middleware('auth:api')->prefix('student')->group(function () {
+
+    // Dashboard - My Team Members (+ counters)
+    Route::get('/dashboard/my-team', [StudentController::class, 'dashboardMyTeam']);
+
+    // Admin actions on members
+    Route::delete('/team/{teamId}/member/{studentId}', [StudentController::class, 'removeMember']);
+    Route::post('/team/{teamId}/leave', [StudentController::class, 'leaveTeam']);
+
+    // Incoming invites (hide if user already approved)
+    Route::get('/incoming-invites', [StudentController::class, 'incomingInvites']);
+    Route::post('/incoming-invites/{teamId}/accept', [StudentController::class, 'acceptInvite']);
+    Route::post('/incoming-invites/{teamId}/reject', [StudentController::class, 'rejectInvite']);
+
+    // Create/Edit Team
+    Route::post('/team/save', [StudentController::class, 'saveTeam']); // body: { team_name }
+
+    // People I can invite
+    Route::get('/invite/people', [StudentController::class, 'peopleICanInvite']); // query: name,phone,studentId,email
+    Route::post('/invite/{studentId}', [StudentController::class, 'sendInvite']);
+});
+
 
 });
 
