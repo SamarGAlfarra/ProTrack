@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import SupervisorSideBar from '../components/SupervisorSideBar';
 import './MyProjects.css';
@@ -7,14 +7,14 @@ import editIcon from '../assets/edit.png';
 import trashIcon from '../assets/trash.png';
 import dropdownArrow from '../assets/arrow.png';
 
+import axios from '../axios';
 
 const MyProjects = () => {
-  const [projects] = useState([
-    { id: 1, title: 'Restaurant Website', status: 'Available' },
-    { id: 2, title: 'Mobile App', status: 'Available' },
-    { id: 3, title: 'Mobile App', status: 'Reserved' },
-    { id: 4, title: 'Mobile App', status: 'Reserved' },
-  ]);
+  // Removed initial demo projects, only server data now
+  const [serverProjects, setServerProjects] = useState([]);
+  const [projLimit, setProjLimit] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [filters, setFilters] = useState({ subject: '', status: '' });
 
@@ -23,12 +23,37 @@ const MyProjects = () => {
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
-  const filteredProjects = projects.filter((project) => {
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const { data } = await axios.get('/supervisor/my-projects');
+        if (!isMounted) return;
+
+        setServerProjects(Array.isArray(data.projects) ? data.projects : []);
+        setProjLimit(
+          typeof data.projects_no_limit === 'number' ? data.projects_no_limit : null
+        );
+      } catch (e) {
+        console.error(e);
+        setError('Failed to load projects.');
+      } finally {
+        setLoading(false);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Filter projects from server
+  const filteredProjects = serverProjects.filter((project) => {
     const matchSubject = filters.subject
-      ? project.title.toLowerCase().includes(filters.subject.toLowerCase())
+      ? (project.title || '').toLowerCase().includes(filters.subject.toLowerCase())
       : true;
     const matchStatus = filters.status
-      ? project.status === filters.status
+      ? (project.status || '') === filters.status
       : true;
     return matchSubject && matchStatus;
   });
@@ -64,9 +89,15 @@ const MyProjects = () => {
             <img src={dropdownArrow} alt="Dropdown Arrow" className="arrow-icon" />
           </div>
 
-
-          <span className="project-limit">Max. Number of projects is 5</span>
+          <span className="project-limit">
+            {projLimit != null
+              ? `Max. Number of projects is ${projLimit}`
+              : 'Max. Number of projects is 5'}
+          </span>
         </div>
+
+        {loading && <div style={{ marginTop: 8 }}>Loading...</div>}
+        {error && <div style={{ marginTop: 8, color: 'crimson' }}>{error}</div>}
 
         <div className="project-list">
           {filteredProjects.map((project) => (
@@ -78,8 +109,7 @@ const MyProjects = () => {
                 {project.title}
               </Link>
 
-
-              <span className={`status ${project.status.toLowerCase()}`}>
+              <span className={`status ${String(project.status).toLowerCase()}`}>
                 {project.status}
               </span>
 

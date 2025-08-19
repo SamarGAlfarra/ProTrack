@@ -9,6 +9,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\ProfilePhotoController;
 use App\Http\Controllers\MeController;
+use App\Http\Controllers\SupervisorController;
 
 /*
 |--------------------------------------------------------------------------
@@ -125,6 +126,10 @@ Route::middleware('auth:api')->put('/me', [MeController::class,'update']);
 Route::middleware('auth:api')->group(function () {
     Route::post('/me/photo', [ProfilePhotoController::class, 'update']); // أو PUT حسب تفضيلك
 });
+
+
+Route::middleware('auth:api')->get('/supervisor/my-projects', [SupervisorController::class, 'myProjects']);
+
 
 /*
 |--------------------------------------------------------------------------

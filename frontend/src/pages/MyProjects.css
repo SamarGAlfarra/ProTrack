@@ -69,13 +69,26 @@
 }
 
 .project-title {
-  flex: 1;
+   flex: 1;
   font-size: 20px;
   text-decoration: underline;
   font-weight: bold;
-  margin-bottom: 1.5rem;
   color: #1c2c4c;
+  margin: 0;              /* reset margin */
+  align-self: center;     /* make sure it centers vertically with status */
 }
+
+
+.projects-container .project-item a.project-title {
+  margin: 0px 15px ;
+  font-size: 15px;
+  font-weight: bold;
+  color: #1c2c4c;
+  padding: 0;
+  text-decoration: underline;
+  align-self: center;     /* keeps it vertically centered */
+} 
+
 
 .status {
   padding: 6px 12px;
