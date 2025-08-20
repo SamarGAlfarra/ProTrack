@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import SupervisorSideBar from '../components/SupervisorSideBar';
 import './AddProject.css';
+import axios from "../axios";
 
 const AddProject = () => {
   const [projectName, setProjectName] = useState('');
@@ -11,38 +12,37 @@ const AddProject = () => {
   const [summary, setSummary] = useState('');
   const [files, setFiles] = useState([]);
 
+  // ✅ ملفات موجودة مسبقًا (عرض فقط)
+  const [existingFiles, setExistingFiles] = useState([]); // [{name, url}]
+
   const { id } = useParams();
   const isEditMode = !!id;
 
   useEffect(() => {
     if (isEditMode) {
-      const dummyProjects = [
-        {
-          id: 1,
-          name: 'Restaurant Website',
-          meetingDay: 'Monday',
-          startTime: '10:00',
-          meetingLink: 'https://zoom.com/restaurant',
-          summary: 'Website for restaurant reservations',
-        },
-        {
-          id: 2,
-          name: 'Mobile App',
-          meetingDay: 'Wednesday',
-          startTime: '13:00',
-          meetingLink: 'https://zoom.com/app',
-          summary: 'App for e-commerce store',
-        },
-      ];
+      (async () => {
+        try {
+          const { data } = await axios.get(`/supervisor/projects/${id}`);
 
-      const project = dummyProjects.find((p) => p.id === parseInt(id));
-      if (project) {
-        setProjectName(project.name);
-        setMeetingDay(project.meetingDay);
-        setStartTime(project.startTime);
-        setMeetingLink(project.meetingLink);
-        setSummary(project.summary);
-      }
+          setProjectName(data.title || '');
+          setMeetingDay(data.meeting_day || '');
+          setStartTime(data.start_time || '');
+          setMeetingLink(data.meeting_link || '');
+          setSummary(data.summary || '');
+          setFiles([]); // لن نعيد رفع القديمة
+
+          // ✅ جهّز الملفات الموجودة للعرض
+          const ex = (data.files || []).map((p, idx) => ({
+            name: (p || '').split('/').pop(),
+            url: (data.file_urls && data.file_urls[idx]) ? data.file_urls[idx] : null,
+          }));
+          setExistingFiles(ex);
+
+          return; // لا نحتاج أي fallback
+        } catch (e) {
+          console.warn('Failed to fetch project, leaving fields empty.', e);
+        }
+      })();
     }
   }, [id, isEditMode]);
 
@@ -58,7 +58,7 @@ const AddProject = () => {
   };
 
   const getFileIcon = (fileName) => {
-    const ext = fileName.split('.').pop().toLowerCase();
+    const ext = (fileName || '').split('.').pop().toLowerCase();
     const icons = {
       pdf: 'https://cdn-icons-png.flaticon.com/512/337/337946.png',
       txt: 'https://cdn-icons-png.flaticon.com/512/3022/3022255.png',
@@ -71,23 +71,30 @@ const AddProject = () => {
     return icons[ext] || icons['default'];
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const formData = {
-      projectName,
-      meetingDay,
-      startTime,
-      meetingLink,
-      summary,
-      files,
-    };
+    const form = new FormData();
+    form.append("title", projectName);
+    form.append("meeting_day", meetingDay);
+    form.append("start_time", startTime);
+    form.append("meeting_link", meetingLink);
+    form.append("summary", summary);
+    if (files && files.length > 0) {
+      files.forEach((f) => form.append("files[]", f));
+    }
 
-    if (isEditMode) {
-      console.log('Updating Project:', id, formData);
-      // TODO: Replace with PUT request to API
-    } else {
-      console.log('Creating Project:', formData);
-      // TODO: Replace with POST request to API
+    try {
+      if (isEditMode) {
+        // await axios.put(`/supervisor/projects/${id}`, form);
+        await axios.post(`/supervisor/projects/${id}`, form); // حسب الراوت لديك
+        alert("Project updated successfully.");
+      } else {
+        const { data } = await axios.post("/supervisor/projects", form);
+        alert(`Project created. ID = ${data.project_id}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save project. Please check console.");
     }
   };
 
@@ -175,12 +182,36 @@ const AddProject = () => {
               </span>
             </div>
 
+            {/* ملفات جديدة مختارة الآن */}
             {files.length > 0 && (
               <div className="file-preview">
                 {files.map((file, index) => (
                   <div className="file-icon-label" key={index}>
                     <img src={getFileIcon(file.name)} alt="file" className="file-icon" />
                     <span className="file-link">{file.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ✅ عرض الملفات الموجودة مسبقًا (Edit فقط) */}
+            {isEditMode && existingFiles.length > 0 && (
+              <div className="file-preview" style={{ marginTop: '8px' }}>
+                {existingFiles.map((f, i) => (
+                  <div className="file-icon-label" key={`existing-${i}`}>
+                    <img src={getFileIcon(f.name)} alt="file" className="file-icon" />
+                    {f.url ? (
+                      <a
+                        className="file-link"
+                        href={f.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {f.name}
+                      </a>
+                    ) : (
+                      <span className="file-link">{f.name}</span>
+                    )}
                   </div>
                 ))}
               </div>

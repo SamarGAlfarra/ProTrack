@@ -130,6 +130,12 @@ Route::middleware('auth:api')->group(function () {
 
 Route::middleware('auth:api')->get('/supervisor/my-projects', [SupervisorController::class, 'myProjects']);
 
+Route::middleware('auth:api')->group(function () {
+    Route::post('/supervisor/projects', [SupervisorController::class, 'store']);
+    Route::post('/supervisor/projects/{projectId}', [SupervisorController::class, 'update']); // يمكنك تبديلها إلى PUT إن رغبت
+    Route::get('/supervisor/projects/{projectId}', [SupervisorController::class, 'show']);
+});
+
 
 /*
 |--------------------------------------------------------------------------
