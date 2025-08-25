@@ -1,52 +1,58 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import StudentSideBar from "../components/StudentSideBar";
+import axios from "../axios";
 import "./ProjectDetails.css";
-
-const projects = [
-  {
-    id: 1,
-    title: "Restaurant Website",
-    supervisor: "Wesam Ashour",
-    meetingTime: "Wednesday 14:00 → 16:00",
-    summary:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam... ".repeat(
-        20
-      ),
-    files: [
-      { name: "draft.txt", url: "#" },
-      { name: "summary.pdf", url: "#" },
-    ],
-  },
-  {
-    id: 2,
-    title: "Mobile App",
-    supervisor: "Ruba Salamah",
-    meetingTime: "Sunday 10:00 → 12:00",
-    summary:
-      "This mobile app helps students manage daily assignments and deadlines.",
-    files: [{ name: "project-outline.docx", url: "#" }],
-  },
-];
 
 const StudentProjectDetails = () => {
   const { id } = useParams();
-  const project = projects.find((p) => p.id === parseInt(id));
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [project, setProject] = useState(null);
 
-  if (!project) {
+  const load = async () => {
+    setLoading(true);
+    setErr("");
+    try {
+      const { data } = await axios.get(`/student/projects/${id}`);
+      setProject(data.project || null);
+    } catch (e) {
+      setErr(e?.response?.data?.message || "Failed to load project details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="supervisor-dashboard">
+        <StudentSideBar />
+        <div className="project-details-container">
+          <h2 className="project-title">Project Details</h2>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (err || !project) {
     return (
       <div className="supervisor-dashboard">
         <StudentSideBar />
         <div className="project-details-container">
           <h2 className="project-title">Project Not Found</h2>
-          <p>No project found for ID: {id}</p>
+          <p>{err || `No project found for ID: ${id}`}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="supervisor-dashboard">
+    <div className="supervisor-dashboard project-details-page ">
       <StudentSideBar />
 
       <div className="project-details-container scrollable-content">
@@ -56,25 +62,33 @@ const StudentProjectDetails = () => {
           <span className="project-name">{project.title}</span>
           <span className="supervisor-name">
             Supervised By:{" "}
-            <span className="blue-link">{project.supervisor}</span>
+            <span className="blue-link">{project?.supervisor?.name}</span>
           </span>
         </div>
 
         <div className="meeting-time-box">
-          Meeting Time : {project.meetingTime}
+          Meeting Time : {project.meeting_time_label || "—"}
         </div>
 
         <div className="summary-box">
           <p className="summary-title">Project Summary</p>
-          <div className="summary-text">{project.summary}</div>
+          <div className="summary-text">{project.summary || "—"}</div>
         </div>
 
         <div className="files-section">
-          {project.files.map((file, index) => (
-            <p key={index}>
-              📄 <a href={file.url}>{file.name}</a>
+          {(project.files || []).map((f, idx) => (
+            <p key={idx}>
+              📄{" "}
+              {f.url ? (
+                <a href={f.url} target="_blank" rel="noreferrer">
+                  {f.name}
+                </a>
+              ) : (
+                f.name
+              )}
             </p>
           ))}
+          {(!project.files || project.files.length === 0) && <p>—</p>}
         </div>
       </div>
     </div>

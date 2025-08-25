@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Validation\Rule;
+use App\Models\TeamApplication;
+use App\Models\Project as ProjectModel; 
 
 class SupervisorController extends Controller
 {
@@ -312,6 +315,129 @@ protected function uniqueFilename(string $dir, string $originalName): string
 
     return $candidate;
 }
+public function incomingRequests(Request $request)
+{
+    $user = $request->user();
+    if (!$user || $user->role !== 'supervisor') {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
 
+    $semesterId = $this->currentSemesterId();
+
+    $rows = \DB::table('team_applications as ta')
+        ->join('projects as p', 'p.project_id', '=', 'ta.project_id')
+        ->join('teams as t', 't.id', '=', 'ta.team_id')
+        ->where('p.supervisor_id', $user->id)
+        ->where('p.semester_id', $semesterId)
+        ->where('ta.status', 'Pending')
+        ->orderBy('t.name')
+        ->get([
+            'ta.team_id',
+            'ta.project_id',
+            't.name as team_name',
+            'p.title as project_title',
+        ]);
+
+    return response()->json(['requests' => $rows]);
+}
+
+// GET /api/supervisor/team/{teamId}/members
+public function teamMembers(Request $request, string $teamId)
+{
+    $user = $request->user();
+    if (!$user) abort(401);
+
+    $members = \DB::table('team_members as tm')
+        ->join('students as s', 's.student_id', '=', 'tm.student_id')
+        ->join('users as u', 'u.id', '=', 's.student_id')
+        ->where('tm.team_id', $teamId)
+        ->select(['u.name as name', 's.student_id'])
+        ->orderBy('u.name')
+        ->get();
+
+    return response()->json(['members' => $members]);
+}
+
+// PATCH /api/supervisor/team-applications/{teamId}/{projectId}
+// PATCH /api/supervisor/team-applications/{teamId}/{projectId}
+
+public function updateTeamApplicationStatus(Request $request, string $teamId, string $projectId)
+{
+    $user = $request->user();
+    if (!$user || $user->role !== 'supervisor') {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    $validated = $request->validate([
+        'status' => ['required', Rule::in(['Approved','Rejected'])],
+    ]);
+
+    // Verify the project belongs to this supervisor
+    $project = DB::table('projects')
+        ->where('project_id', $projectId)
+        ->where('supervisor_id', $user->id)
+        ->first();
+
+    if (!$project) {
+        return response()->json(['message' => 'Not found'], 404);
+    }
+
+    return DB::transaction(function () use ($teamId, $projectId, $validated) {
+
+        // Lock this app row
+        $app = DB::table('team_applications')
+            ->where('team_id', $teamId)
+            ->where('project_id', $projectId)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$app) return response()->json(['message' => 'Not found'], 404);
+        if (strcasecmp($app->status, 'Pending') !== 0) {
+            return response()->json(['message' => 'Only pending requests can be updated'], 409);
+        }
+
+        if ($validated['status'] === 'Approved') {
+            // Lock all rows for this project to avoid races
+            DB::table('team_applications')
+                ->where('project_id', $projectId)
+                ->lockForUpdate()
+                ->get();
+
+            // If another one already got approved, block
+            $alreadyApproved = DB::table('team_applications')
+                ->where('project_id', $projectId)
+                ->where('status', 'Approved')
+                ->exists();
+
+            if ($alreadyApproved) {
+                return response()->json([
+                    'message' => 'This project is already approved for another team.'
+                ], 409);
+            }
+
+            // Approve this app
+            DB::table('team_applications')
+                ->where('team_id', $teamId)
+                ->where('project_id', $projectId)
+                ->update(['status' => 'Approved']);
+
+            // 👇 Auto-reject all other pending applications for this project
+            DB::table('team_applications')
+                ->where('project_id', $projectId)
+                ->where('team_id', '!=', $teamId)
+                ->where('status', 'Pending')
+                ->update(['status' => 'Rejected']);
+
+        } else {
+            // Just reject this one
+            DB::table('team_applications')
+                ->where('team_id', $teamId)
+                ->where('project_id', $projectId)
+                ->update(['status' => 'Rejected']);
+        }
+
+        return response()->json(['ok' => true]);
+    });
+}
 
 }

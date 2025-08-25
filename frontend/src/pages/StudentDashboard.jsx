@@ -168,7 +168,8 @@ const StudentDashboard = () => {
                     <th>#</th>
                     <th>Team Name</th>
                     <th>Team's code</th>
-                    <th>Team's Admin Approval State</th>
+                    <th>Team's Admin </th>
+                    <th>Approval State</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -177,6 +178,7 @@ const StudentDashboard = () => {
                       <td>{i + 1}</td>
                       <td>{r.team_name}</td>
                       <td>{r.team_id}</td>
+                      <td>{r.team_admin_name}</td> {/* 👈 new column */}
                       <td>
                         <div className="action-icons">
                           <img
@@ -199,12 +201,13 @@ const StudentDashboard = () => {
                   ))}
                   {invites.invites.length === 0 && (
                     <tr>
-                      <td colSpan={4} style={{ textAlign: "center" }}>
+                      <td colSpan={5} style={{ textAlign: "center" }}>
                         No pending invites
                       </td>
                     </tr>
                   )}
                 </tbody>
+
               </table>
             </div>
           </div>

@@ -134,8 +134,28 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/supervisor/projects', [SupervisorController::class, 'store']);
     Route::post('/supervisor/projects/{projectId}', [SupervisorController::class, 'update']); // يمكنك تبديلها إلى PUT إن رغبت
     Route::get('/supervisor/projects/{projectId}', [SupervisorController::class, 'show']);
+    // Supervisor – incoming team applications
+    Route::get('/supervisor/incoming-requests', [SupervisorController::class, 'incomingRequests']);
+    Route::get('/supervisor/team/{teamId}/members', [SupervisorController::class, 'teamMembers']);
+     Route::patch(
+        '/supervisor/team-applications/{teamId}/{projectId}',
+        [SupervisorController::class, 'updateTeamApplicationStatus']
+    );
+
 });
 
+Route::middleware('auth:api')->group(function () {
+    Route::get('/student/applications/overview', [StudentController::class, 'applicationsOverview']);
+
+    // Apply to a project (admin only, blocks if team has Pending/Approved)
+    Route::post('/student/applications/apply/{projectId}', [StudentController::class, 'applyToProject'])
+        ->whereNumber('projectId');
+
+    // Project details (for StudentProjectDetails page)
+    Route::get('/student/projects/{id}', [StudentController::class, 'projectDetails'])
+        ->whereNumber('id');
+
+});
 
 /*
 |--------------------------------------------------------------------------

@@ -16,6 +16,10 @@
   margin-bottom: 12px;
 }
 
+.project-details-page h2.project-title {
+  font-size: 20px;
+}
+
 .posts-section {
   height: 180px;
   overflow-y: auto;

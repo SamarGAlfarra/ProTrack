@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+
 
 class StudentController extends Controller
 {
@@ -167,12 +169,18 @@ class StudentController extends Controller
 
             $alreadyApproved = $this->myApprovedTeamId($userId,$semesterId) ? true : false;
 
-            $invites = DB::table($this->T_TEAM_MEMBERS)
-                ->join($this->T_TEAMS, "{$this->T_TEAMS}.{$this->PK_TEAM}", '=', "{$this->T_TEAM_MEMBERS}.team_id")
-                ->where("{$this->T_TEAM_MEMBERS}.student_id",$userId)
-                ->where("{$this->T_TEAM_MEMBERS}.is_approved",0)
-                ->where("{$this->T_TEAMS}.semester_id",$semesterId)
-                ->select("{$this->T_TEAMS}.{$this->PK_TEAM} as team_id","{$this->T_TEAMS}.name as team_name")
+            $invites = DB::table($this->T_TEAM_MEMBERS . ' as tm')
+                ->join($this->T_TEAMS . ' as t', "t.{$this->PK_TEAM}", '=', 'tm.team_id')
+                ->join($this->T_USERS . ' as u', 'u.id', '=', 't.team_admin') // 👈 admin user
+                ->where('tm.student_id', $userId)
+                ->where('tm.is_approved', 0)
+                ->where('t.semester_id', $semesterId)
+                ->select(
+                    't.' . $this->PK_TEAM . ' as team_id',
+                    't.name as team_name',
+                    't.team_admin as team_admin_id',
+                    'u.name as team_admin_name' // 👈 admin name
+                )
                 ->get();
 
             return response()->json([
@@ -472,4 +480,226 @@ class StudentController extends Controller
 
         return response()->json(['ok'=>true]);
     }
+
+    // ====================== NEW: Applications & Details ======================
+public function applicationsOverview(Request $request)
+{
+    $userId     = $request->user()->id;
+    $semesterId = $this->currentSemesterId();
+
+    // Find the (approved) team this semester
+    $teamId = $this->myApprovedTeamId($userId, $semesterId);
+    $team = null;
+    $isAdmin = false;
+
+    if ($teamId) {
+        $t = DB::table($this->T_TEAMS)->where($this->PK_TEAM, $teamId)->first();
+        if ($t) {
+            $isAdmin = ((string)$t->team_admin === (string)$userId);
+            $team = [
+                'id' => $teamId,
+                'name' => $t->name,
+                'is_admin' => $isAdmin,
+            ];
+        }
+    }
+
+    // Student department (prefer students.department, fallback users.department)
+    $deptColStudent = Schema::hasColumn($this->T_STUDENTS,'department_id') ? 'department_id'
+                        : (Schema::hasColumn($this->T_STUDENTS,'department') ? 'department' : null);
+    $deptColUser    = Schema::hasColumn($this->T_USERS,'department_id') ? 'department_id'
+                        : (Schema::hasColumn($this->T_USERS,'department') ? 'department' : null);
+
+    $studentRow = DB::table($this->T_STUDENTS)->where($this->PK_STUDENT, $userId)->first();
+    $userRow    = DB::table($this->T_USERS)->where($this->PK_USER, $userId)->first();
+    $deptId = null;
+    if ($deptColStudent && $studentRow && isset($studentRow->{$deptColStudent})) $deptId = $studentRow->{$deptColStudent};
+    elseif ($deptColUser && $userRow && isset($userRow->{$deptColUser}))          $deptId = $userRow->{$deptColUser};
+
+    // Current application (Pending/Approved/Rejected) if team exists
+    $currentApp = null;
+    if ($teamId) {
+        $app = DB::table($this->T_TEAM_APPS)
+            ->where('team_id', $teamId)
+            ->orderByRaw("FIELD(status,'Pending','Approved','Rejected')") // Pending first
+            ->orderByDesc('status')
+            ->first();
+
+        if ($app) {
+            $p = DB::table('projects as p')
+                ->leftJoin('supervisors as s','s.supervisor_id','=','p.supervisor_id')
+                ->leftJoin('users as u','u.id','=','s.supervisor_id')
+                ->leftJoin('departments as d','d.id','=','u.department')
+                ->where('p.project_id', $app->project_id)
+                ->select(
+                    'p.project_id as id', 'p.title', 'p.summary',
+                    'u.name as sup_name','u.email as sup_email','u.phone_number as sup_phone',
+                    's.educational_degree as sup_degree','d.name as dept_name'
+                )
+                ->first();
+
+            if ($p) {
+                $currentApp = [
+                    'status'  => $app->status,
+                    'project' => [
+                        'id'    => $p->id,
+                        'title' => $p->title,
+                        'description' => $p->summary,
+                        'supervisor' => [
+                            'name' => $p->sup_name,
+                            'email' => $p->sup_email,
+                            'phone_number' => $p->sup_phone,
+                            'department_name' => $p->dept_name,
+                            'educational_degree' => $p->sup_degree,
+                        ],
+                    ],
+                ];
+            }
+        }
+    }
+
+    // Available projects: same department & current semester
+    // Available projects: same department & current semester
+$available = DB::table('projects as p')
+    ->leftJoin('supervisors as s','s.supervisor_id','=','p.supervisor_id')
+    ->leftJoin('users as u','u.id','=','s.supervisor_id')
+    ->leftJoin('departments as d','d.id','=','u.department')
+    ->when($semesterId, fn($q) => $q->where('p.semester_id', $semesterId))
+    ->when($deptId, fn($q) => $q->where('u.department', $deptId))
+
+    // 🚫 exclude any project that already has an Approved team application
+    ->whereNotExists(function ($q) {
+        $q->from('team_applications as ta')
+          ->select(DB::raw(1))
+          ->whereColumn('ta.project_id', 'p.project_id')
+          ->where('ta.status', 'Approved');
+    })
+
+    ->select(
+        'p.project_id as id','p.title',
+        'u.name as sup_name','u.email as sup_email','u.phone_number as sup_phone',
+        's.educational_degree as sup_degree','d.name as dept_name'
+    )
+    ->orderBy('p.title')
+    ->get()
+    ->map(function ($row) {
+        return [
+            'id' => $row->id,
+            'title' => $row->title,
+            'supervisor' => [
+                'name' => $row->sup_name,
+                'email' => $row->sup_email,
+                'phone_number' => $row->sup_phone,
+                'department_name' => $row->dept_name,
+                'educational_degree' => $row->sup_degree,
+            ],
+        ];
+    });
+
+
+    return response()->json([
+        'team' => $team,
+        'current_application' => $currentApp,
+        'available_projects' => $available,
+    ]);
+}
+
+public function applyToProject(Request $request, $projectId)
+{
+    $userId     = $request->user()->id;
+    $semesterId = $this->currentSemesterId();
+
+    // Team must exist & user must be admin of that team
+    $teamId = $this->myApprovedTeamId($userId, $semesterId);
+    if (!$teamId) abort(409, 'You must belong to a team this semester.');
+
+    $team = DB::table($this->T_TEAMS)->where($this->PK_TEAM, $teamId)->first();
+    if (!$team) abort(404, 'Team not found.');
+    if ((string)$team->team_admin !== (string)$userId) abort(403, 'Only the team admin can apply.');
+
+    // Team cannot have an Approved or Pending application already
+    $existsBlock = DB::table($this->T_TEAM_APPS)
+        ->where('team_id', $teamId)
+        ->whereIn('status', ['Pending','Approved'])
+        ->exists();
+    if ($existsBlock) abort(409, 'Team already has a Pending/Approved application.');
+
+    // Project must belong to current semester (optional but sensible)
+    $proj = DB::table('projects')->where('project_id', $projectId)->first();
+    if (!$proj || (string)$proj->semester_id !== (string)$semesterId) abort(404, 'Project not found for current semester.');
+
+    // Avoid duplicates for this team/project
+    $already = DB::table($this->T_TEAM_APPS)
+        ->where(['team_id'=>$teamId,'project_id'=>$projectId])
+        ->exists();
+    if ($already) abort(409, 'Already applied to this project.');
+
+    DB::table($this->T_TEAM_APPS)->insert([
+        'team_id'    => $teamId,
+        'project_id' => $projectId,
+        'status'     => 'Pending',
+    ]);
+
+    return response()->json(['ok'=>true,'status'=>'Pending']);
+}
+
+public function projectDetails(Request $request, $projectId)
+{
+    $semesterId = $this->currentSemesterId();
+
+    $row = DB::table('projects as p')
+        ->leftJoin('supervisors as s','s.supervisor_id','=','p.supervisor_id')
+        ->leftJoin('users as u','u.id','=','s.supervisor_id')
+        ->where('p.project_id', $projectId)
+        ->where('p.semester_id', $semesterId)
+        ->select(
+            'p.project_id as id','p.title','p.summary','p.meeting_time','p.meeting_link','p.file_path',
+            'u.name as sup_name','u.email as sup_email','u.phone_number as sup_phone',
+            's.educational_degree as sup_degree'
+        )
+        ->first();
+
+    if (!$row) abort(404, 'Project not found.');
+
+    // Parse files if you store them as comma-separated names; otherwise adapt.
+    $files = [];
+    if (!empty($row->file_path)) {
+        // Example: "draft.txt,summary.pdf"
+        $parts = array_filter(array_map('trim', explode(',', $row->file_path)));
+        foreach ($parts as $p) {
+            $files[] = ['name' => $p, 'url' => null];
+        }
+    }
+
+    // meeting_time label
+    $label = null;
+    if (!empty($row->meeting_time)) {
+        // DB field is datetime; front-end shows "Wednesday 14:00 → 16:00" (we only have start)
+        // So just show the raw time/date prettified.
+        try {
+            $dt = \Carbon\Carbon::parse($row->meeting_time);
+            $label = $dt->format('l H:i');
+        } catch (\Throwable $e) {
+            $label = (string)$row->meeting_time;
+        }
+    }
+
+    return response()->json([
+        'project' => [
+            'id' => $row->id,
+            'title' => $row->title,
+            'summary' => $row->summary,
+            'meeting_time' => $row->meeting_time,
+            'meeting_time_label' => $label,
+            'meeting_link' => $row->meeting_link,
+            'files' => $files,
+            'supervisor' => [
+                'name' => $row->sup_name,
+                'email' => $row->sup_email,
+                'phone_number' => $row->sup_phone,
+                'educational_degree' => $row->sup_degree,
+            ],
+        ]
+    ]);}
+
 }
