@@ -437,7 +437,398 @@ public function updateTeamApplicationStatus(Request $request, string $teamId, st
         }
 
         return response()->json(['ok' => true]);
-    });
+    });    
 }
 
+
+ public function previousReservedProjects(Request $request)
+    {
+        try {
+            $user = $request->user();
+            if (!$user || $user->role !== 'supervisor') {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            $current = DB::table('semesters')->where('is_current', 1)->first();
+            if (!$current) {
+                return response()->json(['message' => 'No current semester set.'], 409);
+            }
+
+            // optional project limit (if you need it in UI)
+            $supRow = DB::table('supervisors')->where('supervisor_id', $user->id)->first();
+            $limit  = $supRow ? (int)($supRow->projects_no_limit ?? 0) : null;
+
+            // status set (adjust if you only use one)
+            $statusSet = ['reserved', 'Reserved', 'approved', 'Approved'];
+
+            // projects owned by this supervisor, NOT in current semester,
+            // and with at least one reserved/approved team_application
+            $projects = DB::table('projects')
+                ->where('projects.supervisor_id', $user->id)
+                ->where('projects.semester_id', '<>', $current->id)
+                ->whereExists(function ($q) use ($statusSet) {
+                    $q->from('team_applications')
+                      ->whereColumn('team_applications.project_id', 'projects.project_id')
+                      ->whereIn('team_applications.status', $statusSet);
+                })
+                ->leftJoin('semesters', 'semesters.id', '=', 'projects.semester_id')
+                ->orderBy('projects.title')
+                ->get([
+                    'projects.project_id as id',
+                    'projects.title',
+                    'projects.semester_id',
+                    'semesters.name as semester_name',
+                ]);
+
+            return response()->json([
+                'projects_no_limit' => $limit,
+                'projects'          => $projects,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('previousReservedProjects error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['message' => 'Server error'], 500);
+        }
+    }
+
+    /**
+     * POST /supervisor/projects/{project}/activate
+     * Move project + its reserved team to the current semester.
+     */
+    public function activatePreviousProject(Request $request, $projectId)
+{
+    try {
+        $user = $request->user();
+        if (!$user || $user->role !== 'supervisor') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $current = DB::table('semesters')->where('is_current', 1)->first();
+        if (!$current) {
+            return response()->json(['message' => 'No current semester set.'], 409);
+        }
+
+        // Accept common variants
+        $statusList = ['reserved', 'approved', 'selected', 'accepted'];
+
+        return DB::transaction(function () use ($user, $projectId, $current, $statusList) {
+            // Lock project row
+            $project = DB::table('projects')
+                ->where('project_id', $projectId)
+                ->where('supervisor_id', $user->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$project) {
+                return response()->json(['message' => 'Project not found.'], 404);
+            }
+            if ((int)$project->semester_id === (int)$current->id) {
+                return response()->json(['message' => 'Project is already in the current semester.'], 409);
+            }
+
+            // Pull all candidate applications + team semesters
+            $apps = DB::table('team_applications as ta')
+                ->join('teams as t', 't.id', '=', 'ta.team_id')
+                ->where('ta.project_id', $project->project_id)
+                ->whereIn(DB::raw('LOWER(ta.status)'), $statusList)
+                ->lockForUpdate()
+                ->get([
+                    'ta.team_id',
+                    'ta.project_id',
+                    'ta.status',
+                    't.semester_id as team_semester_id',
+                ]);
+
+            if ($apps->isEmpty()) {
+                return response()->json(['message' => 'No reserved/approved team found for this project.'], 409);
+            }
+
+            // Prefer the app whose team semester equals the project's current (old) semester
+            $preferred = $apps->firstWhere('team_semester_id', $project->semester_id);
+            if (!$preferred) {
+                // fallback: choose deterministically by smallest team_id
+                $preferred = $apps->sortBy('team_id')->first();
+            }
+
+            // Move project to current semester and set number = 2
+            DB::table('projects')
+                ->where('project_id', $project->project_id)
+                ->update([
+                    'semester_id' => $current->id,
+                    'number'      => 2,
+                ]);
+
+            // Move chosen team to current semester
+            DB::table('teams')
+                ->where('id', $preferred->team_id)
+                ->update(['semester_id' => $current->id]);
+
+            return response()->json([
+                'message'  => 'Project activated, moved to current semester, and number set to 2.',
+                'team_id'  => $preferred->team_id,
+            ]);
+        });
+    } catch (\Throwable $e) {
+        \Log::error('activatePreviousProject error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response()->json(['message' => 'Server error'], 500);
+    }
+}
+
+public function projectDetails(Request $request, $projectId)
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'supervisor') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Basic project info
+        $project = DB::table('projects')
+            ->where('project_id', $projectId)
+            ->select('project_id as id', 'title')
+            ->first();
+
+        if (!$project) {
+            return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        // Find the (reserved/approved) team currently holding this project
+        $teamApp = DB::table('team_applications')
+            ->where('project_id', $projectId)
+            ->whereRaw('LOWER(status) IN (?, ?)', ['reserved', 'approved'])
+            ->orderByDesc('status')
+            ->first();
+
+        $teamData = ['name' => null, 'code' => null];
+        $members = [];
+
+        if ($teamApp) {
+            $team = DB::table('teams')->where('id', $teamApp->team_id)->first();
+            if ($team) {
+                $teamData['name'] = $team->name ?? 'Team';
+                // No explicit "code" column in schema → derive a readable code
+                $teamData['code'] = sprintf("%05d", $team->id);
+            }
+
+            // Team members (join students -> users to get names)
+            $memberRows = DB::table('team_members as tm')
+                ->join('students as s', 'tm.student_id', '=', 's.student_id')
+                ->join('users as u', 's.student_id', '=', 'u.id')
+                ->where('tm.team_id', $teamApp->team_id)
+                ->select('s.student_id', 'u.name')
+                ->get();
+
+            // For each student: final grade = sum(grades)/(count*10)  → e.g., (3+5+7)/30
+            $idx = 1;
+            foreach ($memberRows as $row) {
+                $agg = DB::table('task_submissions')
+                    ->where('student_id', $row->student_id)
+                    ->selectRaw('COALESCE(SUM(grade),0) as sum_g, COUNT(*) as cnt')
+                    ->first();
+
+                $sum = (float) ($agg->sum_g ?? 0);
+                $cnt = (int) ($agg->cnt ?? 0);
+                $den = max($cnt * 10, 1); // avoid /0
+                $percent = $den > 0 ? round(($sum / $den) * 100, 1) : 0.0;
+
+                $members[] = [
+                    'index'       => $idx++,
+                    'name'        => $row->name,
+                    'student_id'  => (string)$row->student_id,
+                    // Show as "xx.x%" to keep UI simple & exact to your formula
+                    'final_grade' => $percent . '%',
+                ];
+            }
+        }
+
+        // Posts (latest first)
+        $posts = DB::table('project_posts as p')
+            ->join('users as u', 'p.author_id', '=', 'u.id')
+            ->where('p.project_id', $projectId)
+            ->orderByDesc('p.timestamp')
+            ->select('u.name as author', 'p.content as text', 'p.timestamp')
+            ->get()
+            ->map(function ($r) {
+                // Format to DD/MM/YYYY HH:mm Palestine time
+                $ts = Carbon::parse($r->timestamp)->timezone('Asia/Gaza')
+                    ->format('d/m/Y H:i');
+                return ['author' => $r->author, 'text' => $r->text, 'timestamp' => $ts];
+            });
+
+        // Tasks for this project with status:
+        // "Graded" if all submissions from team members are graded (no nulls and count == members count when submitted)
+        $taskRows = DB::table('project_tasks')
+            ->where('project_id', $projectId)
+            ->orderBy('deadline', 'asc')
+            ->select('id', 'title', 'deadline')
+            ->get();
+
+        $memberIds = array_map(fn($m) => (int)$m['student_id'], $members);
+        $memberCount = count($memberIds);
+
+        $tasks = [];
+        foreach ($taskRows as $t) {
+            // submissions only from the team members (if we have a team)
+            $subs = DB::table('task_submissions')
+                ->where('task_id', $t->id);
+
+            if ($memberCount > 0) {
+                $subs->whereIn('student_id', $memberIds);
+            }
+
+            $subs = $subs->selectRaw('COUNT(*) as total_subs, SUM(CASE WHEN grade IS NULL THEN 1 ELSE 0 END) as not_graded')->first();
+
+            $status = 'Not graded';
+            if ($subs && (int)$subs->total_subs > 0 && (int)$subs->not_graded === 0) {
+                $status = 'Graded';
+            }
+
+            $tasks[] = [
+                'id'          => (string)$t->id,
+                'title'       => $t->title,
+                'deadline_str'=> Carbon::parse($t->deadline)->timezone('Asia/Gaza')->format('d/m/Y H:i'),
+                'status'      => $status,
+            ];
+        }
+
+        return response()->json([
+            'project' => ['id' => (string)$project->id, 'title' => $project->title],
+            'team'    => $teamData,
+            'members' => $members,
+            'posts'   => $posts,
+            'tasks'   => $tasks,
+        ]);
+    }
+
+    // ---------------------------
+    // ADD POST
+    // ---------------------------
+    public function addProjectPost(Request $request, $projectId)
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'supervisor') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'content' => 'required|string|max:2000',
+        ]);
+
+        $now = Carbon::now('Asia/Gaza');
+
+        DB::table('project_posts')->insert([
+            'project_id' => (int)$projectId,
+            'author_id'  => (int)$user->id,
+            'timestamp'  => $now,     // uses columns: project_id, author_id, timestamp, content
+            'content'    => $request->input('content'),
+        ]);
+
+        return response()->json([
+            'author'    => $user->name,
+            'text'      => $request->input('content'),
+            'timestamp' => $now->format('d/m/Y H:i'),
+        ], 201);
+    }
+
+    // ---------------------------
+    // ADD TASK  (with optional attachments[])
+    // "task id = project id + serial" (numeric concatenation) & Palestine time
+    // ---------------------------
+    public function addProjectTask(Request $request, $projectId)
+{
+    $user = $request->user();
+    if (!$user || $user->role !== 'supervisor') {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    $request->validate([
+        'title'         => 'required|string|max:255',
+        'deadline'      => 'required|date', // e.g. 2025-01-01T11:59:00
+        'description'   => 'nullable|string',
+        'attachments.*' => 'file|max:20480', // each <= 20MB (front-end may send multiple)
+    ]);
+
+    try {
+        // Normalize deadline to UTC (DB keeps DATETIME)
+        $deadlineUtc = \Carbon\Carbon::parse(str_replace('T',' ', $request->input('deadline')))
+            ->timezone('UTC');
+
+        $nowGaza = \Carbon\Carbon::now('Asia/Gaza');
+
+        // Next serial for this project
+        $serial = DB::table('project_tasks')->where('project_id', $projectId)->count() + 1;
+
+        // Concatenate numeric id: {projectId}{serial}
+        $customId = (int) ((string)$projectId . (string)$serial);
+
+        // Handle ONE file only (schema: varchar(255))
+        $storedPath = null;
+        if ($request->hasFile('attachments') && count($request->file('attachments')) > 0) {
+            $first = $request->file('attachments')[0];
+            $storedPath = $first->store("project_tasks/{$projectId}/{$customId}", 'public'); // e.g. storage/app/public/...
+            // Ensure <=255 just in case (Storage paths are typically short, but be safe)
+            if (strlen($storedPath) > 255) {
+                // fallback: trim tail (rare)
+                $storedPath = substr($storedPath, 0, 255);
+            }
+        }
+
+        DB::table('project_tasks')->insert([
+            'id'          => $customId,
+            'project_id'  => (int)$projectId,
+            'title'       => $request->input('title'),
+            'deadline'    => $deadlineUtc,                 // UTC
+            'description' => $request->input('description'),
+            'file'        => $storedPath,                  // <-- was file_path
+            'timestamp'   => \Carbon\Carbon::now('Asia/Gaza'),
+        ]);
+
+        // Return refreshed tasks list (same shape your page expects)
+        $taskRows = DB::table('project_tasks')
+            ->where('project_id', $projectId)
+            ->orderBy('deadline', 'asc')
+            ->select('id', 'title', 'deadline')
+            ->get();
+
+        // Get current team members for status calc
+        $teamApp = DB::table('team_applications')
+            ->where('project_id', $projectId)
+            ->whereRaw('LOWER(status) IN (?, ?)', ['reserved', 'approved'])
+            ->first();
+
+        $memberIds = [];
+        if ($teamApp) {
+            $memberIds = DB::table('team_members')
+                ->where('team_id', $teamApp->team_id)
+                ->pluck('student_id')->map(fn($x)=>(int)$x)->all();
+        }
+        $memberCount = count($memberIds);
+
+        $tasks = [];
+        foreach ($taskRows as $t) {
+            $subsQ = DB::table('task_submissions')->where('task_id', $t->id);
+            if ($memberCount > 0) $subsQ->whereIn('student_id', $memberIds);
+            $subs = $subsQ->selectRaw('COUNT(*) AS total_subs, SUM(CASE WHEN grade IS NULL THEN 1 ELSE 0 END) AS not_graded')->first();
+
+            $status = 'Not graded';
+            if ($subs && (int)$subs->total_subs > 0 && (int)$subs->not_graded === 0) $status = 'Graded';
+
+            $tasks[] = [
+                'id'           => (string)$t->id,
+                'title'        => $t->title,
+                'deadline_str' => \Carbon\Carbon::parse($t->deadline)->timezone('Asia/Gaza')->format('d/m/Y H:i'),
+                'status'       => $status,
+            ];
+        }
+
+        return response()->json(['tasks' => $tasks], 201);
+
+    } catch (\Throwable $e) {
+        // Log the real cause; return a safe message
+        \Log::error('Add Project Task failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        return response()->json([
+            'message' => 'Failed to add task. Likely cause: file column accepts one path (varchar 255).',
+        ], 500);
+    }
+}
+
+    
 }

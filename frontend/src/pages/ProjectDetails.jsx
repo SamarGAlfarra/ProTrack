@@ -1,78 +1,151 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom'; // ✅ added useNavigate
-import SupervisorSideBar from '../components/SupervisorSideBar';
-import Calendar from '../components/Calendar';
-import './ProjectDetails.css';
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import SupervisorSideBar from "../components/SupervisorSideBar";
+import Calendar from "../components/Calendar";
+import "./ProjectDetails.css";
 
-import sendIcon from '../assets/send.png';
-import addIcon from '../assets/add.png';
-import calendarIcon from '../assets/calendar.png';
-import closeIcon from '../assets/xbutton.png';
+import axios from "../axios";
+import sendIcon from "../assets/send.png";
+import addIcon from "../assets/add.png";
+import calendarIcon from "../assets/calendar.png";
+import closeIcon from "../assets/xbutton.png";
 
 const ProjectDetails = () => {
-  const { id } = useParams();
-  const navigate = useNavigate(); // ✅ initialize navigate
+  const { id } = useParams();                 // project id from URL
+  const navigate = useNavigate();
 
-  const [posts, setPosts] = useState([
-    {
-      author: 'Sahar Ali',
-      text: 'Please make it on sunday from 12:00 → 14:00',
-      timestamp: '01/01/2025 14:42',
-    },
-    {
-      author: 'Samar Alfarra',
-      text: 'Can we change the meeting time?',
-      timestamp: '01/01/2025 14:42',
-    },
-  ]);
+  // ---- page state ----
+  const [loading, setLoading] = useState(true);
+  const [projectTitle, setProjectTitle] = useState("");
+  const [posts, setPosts] = useState([]);
+  const [team, setTeam] = useState({ name: "", code: "" });
+  const [members, setMembers] = useState([]); // [{# idx, name, student_id, final_grade}]
+  const [tasks, setTasks] = useState([]);     // [{id, title, deadline_str, status}]
 
-  const [newPost, setNewPost] = useState('');
+  // add post
+  const [newPost, setNewPost] = useState("");
+
+  // add task popup
   const [showPopup, setShowPopup] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [deadline, setDeadline] = useState(""); // human string (from Calendar)
+  const [subject, setSubject] = useState("");
+  const [file, setFile] = useState([]); // up to 5 files
 
-  const [taskTitle, setTaskTitle] = useState('');
-  const [deadline, setDeadline] = useState('');
-  const [subject, setSubject] = useState('');
-  const [file, setFile] = useState([]);
+  // --- helpers ---
+  const formattedDeadlineISO = useMemo(() => {
+    // backend expects ISO if possible
+    if (!deadline) return "";
+    // accept "DD/MM/YYYY HH:mm" (en-GB) coming from Calendar; convert to ISO 8601
+    const [datePart, timePart] = deadline.split(" ");
+    if (!datePart || !timePart) return deadline;
+    const [dd, mm, yyyy] = datePart.split("/");
+    return `${yyyy}-${mm}-${dd}T${timePart}:00`;
+  }, [deadline]);
 
-  const handleSend = () => {
-    if (newPost.trim() === '') return;
-    const newMessage = {
-      author: 'You',
-      text: newPost,
-      timestamp: new Date().toLocaleString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).replace(',', ''),
-    };
-    setPosts([newMessage,...posts]);
-    setNewPost('');
+  // ---- load everything ----
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const { data } = await axios.get(`/supervisor/projects/${id}/details`);
+        // shape returned by backend below in controller
+        setProjectTitle(data.project.title);
+        setPosts(data.posts);                      // [{author, text, timestamp}]
+        setTeam({ name: data.team.name, code: data.team.code });
+        setMembers(data.members);                  // [{index,name,student_id,final_grade}]
+        setTasks(data.tasks);                      // [{id,title,deadline_str,status}]
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [id]);
+
+  // ---- posts ----
+  const handleSend = async () => {
+    if (!newPost.trim()) return;
+    try {
+      const { data } = await axios.post(`/supervisor/projects/${id}/posts`, {
+        content: newPost.trim(),
+      });
+      // API returns the created post with author + formatted timestamp
+      setPosts((prev) => [data, ...prev]);
+      setNewPost("");
+    } catch (e) {
+      console.error(e);
+    }
   };
 
+  // ---- calendar helpers ----
   const handleDateTimeSelect = (date) => {
-    const formatted = date.toLocaleString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).replace(',', '');
+    const formatted = date
+      .toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+      .replace(",", "");
     setDeadline(formatted);
   };
+  const handleCalendarDone = () => setShowCalendar(false);
 
-  const handleCalendarDone = () => {
-    setShowCalendar(false);
+  // ---- add task ----
+  const handleSaveTask = async () => {
+    if (!taskTitle.trim() || !formattedDeadlineISO) return;
+
+    try {
+      const form = new FormData();
+      form.append("title", taskTitle.trim());
+      form.append("deadline", formattedDeadlineISO); // ISO 8601
+      form.append("description", subject || "");
+      // optional attachments (<=5 files)
+      for (let i = 0; i < file.length; i++) {
+        form.append("attachments[]", file[i]);
+      }
+
+      const { data } = await axios.post(
+        `/supervisor/projects/${id}/tasks`,
+        form,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      // API returns the new task plus the refreshed list; keep it simple and refresh tasks
+      setTasks(data.tasks);
+
+      // reset popup
+      setTaskTitle("");
+      setDeadline("");
+      setSubject("");
+      setFile([]);
+      setShowCalendar(false);
+      setShowPopup(false);
+    } catch (e) {
+      console.error(e);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="supervisor-dashboard">
+        <SupervisorSideBar />
+        <div className="project-details-container">
+          <h2 className="project-title">Loading...</h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="supervisor-dashboard">
       <SupervisorSideBar />
 
       <div className="project-details-container">
-        <h2 className="project-title">Restaurant Website</h2>
+        <h2 className="project-title">{projectTitle || "Project"}</h2>
 
         {/* Posts */}
         <div className="posts-section">
@@ -92,7 +165,7 @@ const ProjectDetails = () => {
             placeholder="Add Post..."
             value={newPost}
             onChange={(e) => setNewPost(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
           />
           <img src={sendIcon} alt="Send" onClick={handleSend} />
         </div>
@@ -102,43 +175,32 @@ const ProjectDetails = () => {
           {/* Team Info */}
           <div className="team-info">
             <h3 className="team-title">
-              Team’s Name : <strong>Power</strong>
+              Team’s Name : <strong>{team.name || "-"}</strong>
             </h3>
-            <p className="team-code">Team’s Code : ABC1234</p>
+            <p className="team-code">Team’s Code : {team.code || "-"}</p>
 
             <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Student Name</th>
-                  <th>Student ID</th>
-                  <th>Final Grade</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>1</td>
-                  <td>Example Name</td>
-                  <td>123456</td>
-                  <td>A+</td>
-                </tr>
-                <tr>
-                  <td>2</td>
-                  <td>Another Name</td>
-                  <td>654321</td>
-                  <td>A</td>
-                </tr>
-                <tr>
-                  <td>3</td>
-                  <td>Third Member</td>
-                  <td>112233</td>
-                  <td>B+</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Student Name</th>
+                    <th>Student ID</th>
+                    <th>Final Grade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((m, idx) => (
+                    <tr key={m.student_id || idx}>
+                      <td>{m.index}</td>
+                      <td>{m.name}</td>
+                      <td>{m.student_id}</td>
+                      <td>{m.final_grade}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Task List */}
@@ -154,19 +216,19 @@ const ProjectDetails = () => {
             </div>
 
             <div className="tasks-list">
-              {[1, 2, 3, 4, 5].map((num) => (
+              {tasks.map((t) => (
                 <div
                   className="task"
-                  key={num}
-                  onClick={() => navigate(`/supervisor/taskdetails/${num}`)} // ✅ navigate on click
-                  style={{ cursor: 'pointer' }} // ✅ pointer cursor
+                  key={t.id}
+                  onClick={() => navigate(`/supervisor/taskdetails/${t.id}`)}
+                  style={{ cursor: "pointer" }}
                 >
                   <div className="task-left">
-                    <p className="task-title">Task {num}</p>
+                    <p className="task-title">{t.title}</p>
                   </div>
                   <div className="task-right">
-                    <p className="task-status">Status: Graded</p>
-                    <p className="task-due">Due To 01/01/2025 11:59</p>
+                    <p className="task-status">Status: {t.status}</p>
+                    <p className="task-due">Due To {t.deadline_str}</p>
                   </div>
                 </div>
               ))}
@@ -220,7 +282,7 @@ const ProjectDetails = () => {
                   <div className="calendar-wrapper">
                     <Calendar
                       onDateTimeSelect={handleDateTimeSelect}
-                      onClear={() => setDeadline('')}
+                      onClear={() => setDeadline("")}
                       onDone={handleCalendarDone}
                     />
                   </div>
@@ -234,20 +296,22 @@ const ProjectDetails = () => {
                 />
 
                 <input
-                type="file"
-                multiple
-                onChange={(e) => setFile([...e.target.files].slice(0, 5))}
-                className="popup-file"
-              />
-              {file.length > 0 && (
-                <ul className="file-list">
-                  {file.map((f, index) => (
-                    <li key={index}>{f.name}</li>
-                  ))}
-                </ul>
-              )}
+                  type="file"
+                  multiple
+                  onChange={(e) => setFile([...e.target.files].slice(0, 5))}
+                  className="popup-file"
+                />
+                {file.length > 0 && (
+                  <ul className="file-list">
+                    {file.map((f, index) => (
+                      <li key={index}>{f.name}</li>
+                    ))}
+                  </ul>
+                )}
 
-                <button className="popup-save">Save</button>
+                <button className="popup-save" onClick={handleSaveTask}>
+                  Save
+                </button>
               </div>
             </div>
           </div>

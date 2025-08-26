@@ -94,7 +94,7 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
 
 
 
-    Route::middleware('auth:api')->prefix('student')->group(function () {
+/*     Route::middleware('auth:api')->prefix('student')->group(function () {
 
     // Dashboard - My Team Members (+ counters)
     Route::get('/dashboard/my-team', [StudentController::class, 'dashboardMyTeam']);
@@ -114,7 +114,17 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
     // People I can invite
     Route::get('/invite/people', [StudentController::class, 'peopleICanInvite']); // query: name,phone,studentId,email
     Route::post('/invite/{studentId}', [StudentController::class, 'sendInvite']);
-});
+
+    
+Route::get('/student/projects/{projectId}/overview', [StudentController::class, 'projectOverview']);
+Route::post('/student/projects/{projectId}/posts',     [StudentController::class, 'addProjectPost']);
+
+Route::get('/student/tasks/{taskId}/thread',   [StudentController::class, 'taskThread']);
+Route::post('/student/tasks/{taskId}/submit',  [StudentController::class, 'submitTask']);
+Route::post('/student/tasks/{taskId}/comments',[StudentController::class, 'addTaskComment']);
+Route::get('/student/projects/current', [StudentController::class, 'currentProject']);
+
+}); */
 
 
 });
@@ -137,11 +147,18 @@ Route::middleware('auth:api')->group(function () {
     // Supervisor – incoming team applications
     Route::get('/supervisor/incoming-requests', [SupervisorController::class, 'incomingRequests']);
     Route::get('/supervisor/team/{teamId}/members', [SupervisorController::class, 'teamMembers']);
+
+    
      Route::patch(
         '/supervisor/team-applications/{teamId}/{projectId}',
         [SupervisorController::class, 'updateTeamApplicationStatus']
     );
 
+    Route::get('/supervisor/previous-projects', [SupervisorController::class, 'previousReservedProjects']);
+    Route::post('/supervisor/projects/{project}/activate', [SupervisorController::class, 'activatePreviousProject']);
+        Route::get('/supervisor/projects/{projectId}/details', [SupervisorController::class, 'projectDetails']);
+    Route::post('/supervisor/projects/{projectId}/posts',   [SupervisorController::class, 'addProjectPost']);
+    Route::post('/supervisor/projects/{projectId}/tasks',   [SupervisorController::class, 'addProjectTask']);
 });
 
 Route::middleware('auth:api')->group(function () {
@@ -156,6 +173,56 @@ Route::middleware('auth:api')->group(function () {
         ->whereNumber('id');
 
 });
+
+
+// All of this remains INSIDE your outer group: Route::middleware(['jwt.cookie','auth:api'])->group(function () { ... })
+Route::prefix('student')->group(function () {
+
+    // Dashboard - My Team Members (+ counters)
+    Route::get('dashboard/my-team', [StudentController::class, 'dashboardMyTeam']);
+
+    // Admin actions on members
+    Route::delete('team/{teamId}/member/{studentId}', [StudentController::class, 'removeMember']);
+    Route::post('team/{teamId}/leave', [StudentController::class, 'leaveTeam']);
+
+    // Incoming invites
+    Route::get('incoming-invites', [StudentController::class, 'incomingInvites']);
+    Route::post('incoming-invites/{teamId}/accept', [StudentController::class, 'acceptInvite']);
+    Route::post('incoming-invites/{teamId}/reject', [StudentController::class, 'rejectInvite']);
+
+    // Create/Edit Team
+    Route::post('team/save', [StudentController::class, 'saveTeam']);
+    Route::get('invite/people', [StudentController::class, 'peopleICanInvite']);
+    Route::post('invite/{studentId}', [StudentController::class, 'sendInvite']);
+
+    // 🔽 Project wall + meeting + tasks (for your page)
+    Route::get('projects/current', [StudentController::class, 'currentProject']);                // returns { project_id }
+    Route::get('projects/{projectId}/overview', [StudentController::class, 'projectOverview']);
+    Route::post('projects/{projectId}/posts',    [StudentController::class, 'addProjectPost']);
+
+    // 🔽 Task modal (grade + comments + submit)
+    Route::get('tasks/{taskId}/thread',   [StudentController::class, 'taskThread']);
+    Route::post('tasks/{taskId}/submit',  [StudentController::class, 'submitTask']);
+    Route::post('tasks/{taskId}/comments',[StudentController::class, 'addTaskComment']);
+
+    Route::get('/projects/{project}/details', [\App\Http\Controllers\StudentController::class, 'StudentProjectDetails']);
+        Route::post('/projects/{project}/posts',   [\App\Http\Controllers\StudentController::class, 'addPost']);
+
+        // task details, submissions, comments
+        Route::get('/tasks/{task}/details',    [\App\Http\Controllers\StudentController::class, 'taskDetails']);
+        Route::post('/tasks/{task}/submit',    [\App\Http\Controllers\StudentController::class, 'submitTask']);
+        Route::get('/tasks/{task}/comments',   [\App\Http\Controllers\StudentController::class, 'getComments']);
+        Route::post('/tasks/{task}/comments',  [\App\Http\Controllers\StudentController::class, 'addComment']);
+
+    // Other student endpoints you already have
+    Route::get('applications/overview', [StudentController::class, 'applicationsOverview']);
+    Route::post('applications/apply/{projectId}', [StudentController::class, 'applyToProject'])->whereNumber('projectId');
+    Route::get('projects/{id}', [StudentController::class, 'projectDetails'])->whereNumber('id');
+});
+
+
+
+
 
 /*
 |--------------------------------------------------------------------------

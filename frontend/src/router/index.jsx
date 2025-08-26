@@ -27,6 +27,7 @@ import MyProfile from "../pages/MyProfile";
 // Supervisor subpages
 import MyProjectsSupervisor from "../pages/MyProjectsSupervisor";
 import MyProfileSupervisor from "../pages/MyProfileSupervisor";
+import MyPreviousProjectsSupervisor from "../pages/MyPreviousProjectsSupervisor";
 import AddProject from "../pages/AddProject";
 import ProjectDetails from "../pages/ProjectDetails";
 import TaskDetails from "../pages/TaskDetails";
@@ -148,6 +149,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedRoles={["supervisor"]}>
         <SupervisorDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/supervisor/mypreviousprojects",
+    element: (
+      <ProtectedRoute allowedRoles={["supervisor"]}>
+        <MyPreviousProjectsSupervisor />
       </ProtectedRoute>
     ),
   },

@@ -86,7 +86,11 @@ const SupervisorSideBar = () => {
         </Link>
         <Link to="/supervisor/myprojects" className="sidebar-link">
           <img src={myprojectsIcon} alt="My Projects" className="icon" />
-          {!isCollapsed && "MyProjects"}
+          {!isCollapsed && "My Projects"}
+        </Link>
+        <Link to="/supervisor/mypreviousprojects" className="sidebar-link">
+          <img src={myprojectsIcon} alt="My Previous Projects" className="icon" />
+          {!isCollapsed && "My Previous Projects"}
         </Link>
 
         <Link to="/supervisor/MyProfile" className="sidebar-link">

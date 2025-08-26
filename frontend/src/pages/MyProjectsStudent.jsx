@@ -1,62 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import './ProjectDetails.css';
 import sendIcon from '../assets/send.png';
 import StudentSideBar from '../components/StudentSideBar';
 import ViewSubmissionStudent from "../components/viewSubmissionStudent";
- // Adjust path if needed
+import axios from "../axios";
 
 const MyProjectsStudent = () => {
-  const [posts, setPosts] = useState([
-    {
-      author: 'Sahar Ali',
-      text: 'Please make it on sunday from 12:00 → 14:00',
-      timestamp: '01/01/2025 14:42',
-    },
-    {
-      author: 'Samar Alfarra',
-      text: 'Can we change the meeting timing?',
-      timestamp: '01/01/2025 14:42',
-    },
-  ]);
+  const { projectId } = useParams();            // <-- from route /student/projects/:projectId
+  const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState('');
+  const [meeting, setMeeting] = useState({ title: '', time: '', link: '' });
+  const [tasks, setTasks] = useState([]);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState(null);
 
-  const handleSend = () => {
-    if (newPost.trim() === '') return;
-    const newMessage = {
-      author: 'You',
-      text: newPost,
-      timestamp: new Date().toLocaleString('en-GB').replace(',', ''),
-    };
-    setPosts([newMessage,...posts]);
-    setNewPost('');
+  // load page data
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await axios.get(`/student/projects/${projectId}/details`);
+        setPosts(data.posts || []);
+        setMeeting({
+          title: data.project?.title || 'Project Meeting',
+          time: data.project?.meeting_time || '',
+          link: data.project?.meeting_link || '#',
+        });
+        setTasks(data.tasks || []);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [projectId]);
+
+  const handleSend = async () => {
+    if (!newPost.trim()) return;
+    try {
+      const { data } = await axios.post(`/student/projects/${projectId}/posts`, {
+        content: newPost.trim(),
+      });
+      // prepend newly created post (API returns the saved row)
+      setPosts([data, ...posts]);
+      setNewPost('');
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const handleTaskClick = () => {
+  const handleTaskClick = (taskId) => {
+    setActiveTaskId(taskId);
     setShowSubmissionModal(true);
   };
-
   const handleCloseModal = () => {
     setShowSubmissionModal(false);
+    setActiveTaskId(null);
   };
 
   return (
     <div className="supervisor-dashboard">
       <StudentSideBar />
-
       <div className="project-details-container">
-        <h2 className="project-title">Restaurant Website</h2>
+        <h2 className="project-title">{meeting.title || 'Project'}</h2>
 
+        {/* posts */}
         <div className="posts-section">
-          {posts.map((post, index) => (
-            <div className="post" key={index}>
-              <div className="post-author">{post.author}</div>
-              <div className="post-text">{post.text}</div>
+          {posts.map((post, idx) => (
+            <div className="post" key={idx}>
+              <div className="post-author">{post.author_name}</div>
+              <div className="post-text">{post.content}</div>
               <div className="post-timestamp">{post.timestamp}</div>
             </div>
           ))}
         </div>
 
+        {/* add post */}
         <div className="add-update">
           <input
             type="text"
@@ -68,42 +85,39 @@ const MyProjectsStudent = () => {
           <img src={sendIcon} alt="Send" onClick={handleSend} />
         </div>
 
+        {/* meeting */}
         <div className="meeting-section">
           <h3 className="meeting-title">Upcoming Meeting</h3>
           <div className="meeting-box">
-            <span>Discussion 1 </span>
-            <span> Wednesday at &nbsp;14:00 </span>
-            <button className="join-button">Join Meeting</button>
+            <span>Discussion</span>
+            <span>&nbsp;{meeting.time}</span>
+            <a className="join-button" href={meeting.link} target="_blank" rel="noreferrer">Join Meeting</a>
           </div>
         </div>
 
+        {/* tasks */}
         <div className="tasks-grade-container">
           <div className="tasks-header-row">
             <h3 className="tasks-title">All Tasks</h3>
             <div className="final-grade">Final Grade: --/100</div>
           </div>
-
           <div className="tasks-table-wrapper">
             <table className="tasks-table">
               <thead>
-                <tr>
-                  <th>Task</th>
-                  <th>Deadline</th>
-                  <th>Status</th>
-                </tr>
+                <tr><th>Task</th><th>Deadline</th><th>Status</th></tr>
               </thead>
               <tbody>
-                {[...Array(7)].map((_, index) => (
-                  <tr key={index}>
+                {tasks.map(t => (
+                  <tr key={t.id}>
                     <td
-                      onClick={handleTaskClick}
+                      onClick={() => handleTaskClick(t.id)}
                       style={{ textDecoration: 'underline', cursor: 'pointer' }}
                     >
-                      Task {index + 1}
+                      {t.name}
                     </td>
-                    <td>Apr 15, 2025</td>
+                    <td>{t.deadline}</td>
                     <td>
-                      <span className="status submitted">Submitted</span>
+                      <span className={`status ${t.status.toLowerCase().replace(' ', '-')}`}>{t.status}</span>
                     </td>
                   </tr>
                 ))}
@@ -113,7 +127,12 @@ const MyProjectsStudent = () => {
         </div>
       </div>
 
-      {showSubmissionModal && <ViewSubmissionStudent onClose={handleCloseModal} />}
+      {showSubmissionModal && (
+        <ViewSubmissionStudent
+          taskId={activeTaskId}
+          onClose={handleCloseModal}
+        />
+      )}
     </div>
   );
 };
