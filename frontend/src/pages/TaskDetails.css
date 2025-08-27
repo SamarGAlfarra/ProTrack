@@ -97,13 +97,13 @@
 }
 
 .status.on-time {
-  background-color: #fef3c7;
-  color: #92400e;
+  background-color: #d4edda;
+  color: #155724;
 }
 
 .status.late {
-  background-color: #fecaca;
-  color: #991b1b;
+  background-color: #f8d7da;
+  color: #721c24;
 }
 
 /* Responsive Design */

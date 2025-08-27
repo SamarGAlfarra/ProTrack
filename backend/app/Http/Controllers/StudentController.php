@@ -703,208 +703,321 @@ public function projectDetails(Request $request, $projectId)
         ]
     ]);}
 
-private function assertStudent($user)
+    // ---------- Small helpers ----------
+    private function currentStudentId(Request $request)
     {
-        if (!$user || $user->role !== 'student') {
-            abort(403, 'Unauthorized');
+        return $request->user()->id; // students.student_id == users.id
+    }
+
+    private function studentProjectId($studentId)
+    {
+        $row = DB::table('team_members as tm')
+            ->join('team_applications as ta', 'ta.team_id', '=', 'tm.team_id')
+            ->where('tm.student_id', $studentId)
+            ->where('tm.is_approved', 1)
+            ->whereRaw('LOWER(ta.status) = ?', ['approved'])
+            ->select('ta.project_id', 'tm.team_id')
+            ->first();
+
+        return $row ? $row->project_id : null;
+    }
+
+    private function ensureTaskBelongsToStudentProject($studentId, $taskId)
+    {
+        $task = DB::table('project_tasks')->where('id', $taskId)->first();
+        if (!$task) return [null, response()->json(['message' => 'Task not found'], 404)];
+
+        $projectId = $this->studentProjectId($studentId);
+        if (!$projectId || intval($projectId) !== intval($task->project_id)) {
+            return [null, response()->json(['message' => 'Forbidden'], 403)];
         }
+        return [$task, null];
     }
 
-    // helper: format timestamp (Palestine time)
-    private function nowGaza()
+    // 1) Enrollment + Project Information
+    public function myProject(Request $request)
     {
-        return Carbon::now('Asia/Gaza');
-    }
+        $sid = $this->currentStudentId($request);
+        $projectId = $this->studentProjectId($sid);
 
-    // GET /student/projects/{project}/details
-    public function StudentProjectDetails(Request $request, $projectId)
-    {
-        $user = $request->user(); $this->assertStudent($user);
-
-        // verify the student belongs to an approved team for this project
-        $isAllowed = DB::table('team_members as tm')
-            ->join('teams as t', 't.id', '=', 'tm.team_id')
-            ->join('team_applications as ta', function ($j) {
-                $j->on('ta.team_id', '=', 't.id')->on('ta.project_id', '=', 't.project_id');
-            })
-            ->where('tm.student_id', $user->id)
-            ->where('ta.project_id', $projectId)
-            ->where('ta.status', 'approved')
-            ->exists();
-
-        if (!$isAllowed) {
-            return response()->json(['message' => 'Not in this project'], 403);
+        if (!$projectId) {
+            return response()->json(['enrolled' => false]);
         }
 
         $project = DB::table('projects')
             ->where('project_id', $projectId)
-            ->first(['project_id as id','title','meeting_time','meeting_link']);
+            ->select('project_id', 'title', 'meeting_time', 'meeting_link')
+            ->first();
 
-        // posts
+        return response()->json([
+            'enrolled' => true,
+            'project' => $project
+        ]);
+    }
+
+    // 2) Project Posts
+    public function getProjectPosts(Request $request, $projectId)
+    {
+        $sid = $this->currentStudentId($request);
+        // authorize via enrollment
+        if (intval($projectId) !== intval($this->studentProjectId($sid))) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $posts = DB::table('project_posts as pp')
             ->join('users as u', 'u.id', '=', 'pp.author_id')
             ->where('pp.project_id', $projectId)
             ->orderByDesc('pp.timestamp')
             ->get([
-                'u.name as author_name',
-                'pp.content',
-                DB::raw("DATE_FORMAT(pp.timestamp, '%d/%m/%Y %H:%i') as timestamp")
+                'u.name as author',
+                'pp.timestamp',
+                'pp.content'
             ]);
 
-        // tasks + status per this student
-        $tasks = DB::table('project_tasks')
-            ->where('project_id', $projectId)
-            ->orderBy('id')
-            ->get(['id','name','deadline'])
-            ->map(function ($t) use ($user) {
-                $firstSubmission = DB::table('task_submissions')
-                    ->where('task_id', $t->id)
-                    ->where('student_id', $user->id)
-                    ->orderBy('timestamp', 'asc')
-                    ->first(['timestamp']);
-                $status = 'Not Submitted';
-                if ($firstSubmission) {
-                    $status = Carbon::parse($firstSubmission->timestamp)->lte(Carbon::parse($t->deadline))
-                        ? 'Submitted' : 'Late';
-                }
-                return [
-                    'id' => $t->id,
-                    'name' => $t->name,
-                    'deadline' => Carbon::parse($t->deadline)->format('M d, Y'),
-                    'status' => $status,
-                ];
-            });
-
-        return response()->json([
-            'project' => $project,
-            'posts' => $posts,
-            'tasks' => $tasks,
-        ]);
+        return response()->json(['posts' => $posts]);
     }
 
-    // POST /student/projects/{project}/posts
-    public function addPost(Request $request, $projectId)
+    public function addProjectPost(Request $request, $projectId)
     {
-        $user = $request->user(); $this->assertStudent($user);
-        $content = trim($request->input('content', ''));
-        if ($content === '') return response()->json(['message'=>'Content required'], 422);
-
-        $timestamp = $this->nowGaza();
-        DB::table('project_posts')->insert([
-            'project_id' => $projectId,
-            'author_id'  => $user->id,
-            'timestamp'  => $timestamp,
-            'content'    => $content,
-        ]);
-
-        return response()->json([
-            'author_name' => $user->name,
-            'content' => $content,
-            'timestamp' => $timestamp->format('d/m/Y H:i'),
-        ]);
-    }
-
-    // GET /student/tasks/{task}/details
-    public function taskDetails(Request $request, $taskId)
-    {
-        $user = $request->user(); $this->assertStudent($user);
-
-        // latest submission grade for this student (nullable)
-        $latest = DB::table('task_submissions')
-            ->where('task_id', $taskId)
-            ->where('student_id', $user->id)
-            ->orderByDesc('timestamp')
-            ->first(['grade']);
-
-        $grade = $latest ? $latest->grade : null;
-
-        // comments (private per task & project’s student/supervisor context)
-        $comments = DB::table('comments as c')
-            ->join('users as u', 'u.id', '=', 'c.author_id')
-            ->where('c.task_id', $taskId)
-            ->where('c.student_id', $user->id) // private thread for this student
-            ->orderByDesc('c.timestamp')
-            ->get([
-                'u.name as author_name',
-                'c.comment as content',
-                DB::raw("DATE_FORMAT(c.timestamp, '%d/%m/%Y %H:%i') as timestamp")
-            ]);
-
-        return response()->json([
-            'grade' => $grade,
-            'comments' => $comments,
-        ]);
-    }
-
-    // POST /student/tasks/{task}/submit
-    public function submitTask(Request $request, $taskId)
-    {
-        $user = $request->user(); $this->assertStudent($user);
-
         $request->validate([
-            'files'   => 'required|array|max:5',
-            'files.*' => 'file|max:10240', // 10MB each; adjust as needed
+            'content' => 'required|string|max:5000'
         ]);
 
-        $now = $this->nowGaza();
-
-        foreach ($request->file('files') as $file) {
-            $dir = "task_submissions/{$taskId}/{$user->id}";
-            $storedPath = Storage::disk('public')->putFile($dir, $file); // store in storage/app/public/...
-
-            DB::table('task_submissions')->insert([
-                'task_id'    => $taskId,
-                'student_id' => $user->id,
-                'file_path'  => $storedPath,      // varchar(255)
-                'grade'      => null,             // NULL initially
-                'timestamp'  => $now,
-            ]);
+        $sid = $this->currentStudentId($request);
+        if (intval($projectId) !== intval($this->studentProjectId($sid))) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        return response()->json(['message' => 'Submitted'], 201);
+        $now = Carbon::now('Asia/Gaza');
+
+        DB::table('project_posts')->insert([
+            'project_id' => $projectId,
+            'author_id'  => $sid,
+            'timestamp'  => $now,
+            'content'    => $request->input('content')
+        ]);
+
+        $post = [
+            'author'    => DB::table('users')->where('id', $sid)->value('name'),
+            'timestamp' => $now->toDateTimeString(),
+            'content'   => $request->input('content')
+        ];
+
+        return response()->json(['post' => $post], 201);
     }
 
-    // GET /student/tasks/{task}/comments
+    // 3) Tasks Overview + Final Grade
+    public function getProjectTasks(Request $request, $projectId)
+{
+    $sid = $this->currentStudentId($request);
+    if ((int)$projectId !== (int)$this->studentProjectId($sid)) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
+
+    $rows = DB::table('project_tasks as t')
+        ->leftJoin('task_submissions as s', function ($join) use ($sid) {
+            $join->on('s.task_id', '=', 't.id')
+                 ->where('s.student_id', '=', $sid);
+        })
+        ->where('t.project_id', $projectId)
+        ->orderByDesc('t.timestamp')
+        ->get([
+            't.id',
+            't.title',          // <-- get the real title
+            't.deadline',
+            't.description',
+            't.timestamp',
+            't.file',
+            's.timestamp as submitted_at',
+            's.grade',
+            's.file_path'
+        ]);
+
+    $tasks = [];
+    $sumGrades = 0;
+    $taskCount = 0;
+
+    foreach ($rows as $r) {
+        $taskCount++;
+
+        // status
+        $status = 'Unsubmitted';
+        if ($r->submitted_at) {
+            $status = (strtotime($r->submitted_at) <= strtotime($r->deadline))
+                ? 'Submitted'
+                : 'Late';
+        }
+
+        if ($r->grade !== null) {
+            $sumGrades += (float)$r->grade;
+        }
+
+        $tasks[] = [
+            'id'          => $r->id,
+            'title'       => $r->title ?? ('Task ' . $r->id), // fallback just in case
+            'deadline'    => $r->deadline,
+            'description' => $r->description,
+            'timestamp'   => $r->timestamp,
+            'file'        => $r->file,
+            'status'      => $status,
+        ];
+    }
+
+    $final = null;
+    if ($taskCount > 0) {
+        $final = ($sumGrades / ($taskCount * 10)) * 100.0;
+    }
+
+    return response()->json([
+        'tasks'       => $tasks,
+        'final_grade' => $final,
+    ]);
+}
+
+
+    // 4) Submission (read)
+    public function getSubmission(Request $request, $taskId)
+    {
+        $sid = $this->currentStudentId($request);
+        [$task, $error] = $this->ensureTaskBelongsToStudentProject($sid, $taskId);
+        if ($error) return $error;
+
+        $sub = DB::table('task_submissions')
+            ->where('task_id', $taskId)
+            ->where('student_id', $sid)
+            ->first(['file_path', 'grade', 'timestamp']);
+
+        return response()->json([
+            'submission' => $sub
+        ]);
+    }
+
+    // 5) Submission (create)
+    public function createSubmission(Request $request, $taskId)
+    {
+        $sid = $this->currentStudentId($request);
+        [$task, $error] = $this->ensureTaskBelongsToStudentProject($sid, $taskId);
+        if ($error) return $error;
+
+        // allow creating even after deadline (will be "Late")
+        $existing = DB::table('task_submissions')
+            ->where('task_id', $taskId)->where('student_id', $sid)->first();
+        if ($existing) {
+            return response()->json(['message' => 'Submission already exists. Use update.'], 409);
+        }
+
+        $request->validate([
+            'files.*' => 'required|file|max:10240' // 10MB each
+        ]);
+
+        $paths = [];
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                $paths[] = $file->store("task_submissions/{$taskId}/{$sid}", 'public');
+            }
+        }
+
+        $now = Carbon::now('Asia/Gaza');
+
+        DB::table('task_submissions')->insert([
+            'task_id'   => $taskId,
+            'student_id'=> $sid,
+            'file_path' => implode(',', $paths),
+            'grade'     => null,
+            'timestamp' => $now
+        ]);
+
+        return response()->json(['message' => 'Created'], 201);
+    }
+
+    // 6) Submission (update files before deadline)
+    public function updateSubmission(Request $request, $taskId)
+    {
+        $sid = $this->currentStudentId($request);
+        [$task, $error] = $this->ensureTaskBelongsToStudentProject($sid, $taskId);
+        if ($error) return $error;
+
+        $now = Carbon::now('Asia/Gaza');
+        if ($now->greaterThan(Carbon::parse($task->deadline))) {
+            return response()->json(['message' => 'Deadline passed. Updating files is not allowed.'], 422);
+        }
+
+        $request->validate([
+            'files.*' => 'required|file|max:10240'
+        ]);
+
+        $sub = DB::table('task_submissions')
+            ->where('task_id', $taskId)->where('student_id', $sid)->first();
+        if (!$sub) {
+            return response()->json(['message' => 'No submission to update. Create first.'], 404);
+        }
+
+        $paths = [];
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                $paths[] = $file->store("task_submissions/{$taskId}/{$sid}", 'public');
+            }
+        }
+
+        DB::table('task_submissions')
+            ->where('task_id', $taskId)->where('student_id', $sid)
+            ->update([
+                'file_path' => implode(',', $paths),
+                'timestamp' => $now
+            ]);
+
+        return response()->json(['message' => 'Updated']);
+    }
+
+    // 7) Comments (list)
     public function getComments(Request $request, $taskId)
     {
-        $user = $request->user(); $this->assertStudent($user);
+        $sid = $this->currentStudentId($request);
+        [$task, $error] = $this->ensureTaskBelongsToStudentProject($sid, $taskId);
+        if ($error) return $error;
 
         $rows = DB::table('comments as c')
             ->join('users as u', 'u.id', '=', 'c.author_id')
             ->where('c.task_id', $taskId)
-            ->where('c.student_id', $user->id)
+            ->where('c.student_id', $sid)
             ->orderByDesc('c.timestamp')
             ->get([
-                'u.name as author_name',
-                'c.comment as content',
-                DB::raw("DATE_FORMAT(c.timestamp, '%d/%m/%Y %H:%i') as timestamp")
+                'u.name as author',
+                'c.timestamp',
+                'c.comment'
             ]);
 
-        return response()->json($rows);
+        return response()->json(['comments' => $rows]);
     }
 
-    // POST /student/tasks/{task}/comments
+    // 8) Comments (add)
     public function addComment(Request $request, $taskId)
     {
-        $user = $request->user(); $this->assertStudent($user);
-        $content = trim($request->input('content', ''));
-        if ($content === '') return response()->json(['message'=>'Content required'], 422);
-
-        $ts = $this->nowGaza();
-
-        DB::table('comments')->insert([
-            'task_id'    => $taskId,
-            'student_id' => $user->id,  // private thread id
-            'author_id'  => $user->id,  // author is this student (as required)
-            'timestamp'  => $ts,
-            'comment'    => $content,
+        $request->validate([
+            'comment' => 'required|string|max:5000'
         ]);
 
-        return response()->json([
-            'author_name' => $user->name,
-            'content' => $content,
-            'timestamp' => $ts->format('d/m/Y H:i'),
-        ], 201);
+        $sid = $this->currentStudentId($request);
+        [$task, $error] = $this->ensureTaskBelongsToStudentProject($sid, $taskId);
+        if ($error) return $error;
+
+        $now = Carbon::now('Asia/Gaza');
+
+        DB::table('comments')->insert([
+            'task_id'   => $taskId,
+            'student_id'=> $sid,
+            'author_id' => $sid,
+            'timestamp' => $now,
+            'comment'   => $request->input('comment')
+        ]);
+
+        $comment = [
+            'author'    => DB::table('users')->where('id', $sid)->value('name'),
+            'timestamp' => $now->toDateTimeString(),
+            'comment'   => $request->input('comment')
+        ];
+
+        return response()->json(['comment' => $comment], 201);
     }
 
 }

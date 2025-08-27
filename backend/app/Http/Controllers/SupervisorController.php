@@ -13,7 +13,10 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
 use App\Models\TeamApplication;
+use Illuminate\Support\Facades\Validator;
 use App\Models\Project as ProjectModel; 
+use Illuminate\Support\Facades\URL;   // <-- ADD THIS
+
 
 class SupervisorController extends Controller
 {
@@ -829,6 +832,223 @@ public function projectDetails(Request $request, $projectId)
         ], 500);
     }
 }
+
+private function assertOwnsTask(Request $request, int $taskId)
+{
+    $user = $request->user();
+    if (!$user || $user->role !== 'supervisor') abort(403, 'Unauthorized');
+
+    // ✅ projects PK is project_id (not id)
+    $owns = DB::table('project_tasks as t')
+        ->join('projects as p', 'p.project_id', '=', 't.project_id')
+        ->where('t.id', $taskId)
+        ->where('p.supervisor_id', $user->id)
+        ->exists();
+
+    if (!$owns) abort(403, 'Forbidden');
+    return $user;
+}
+
+    /**
+     * Data for TaskDetails table:
+     * - task title (use description or "Task {id}")
+     * - each submission row (student name/id, submitted_at, status On time/Late, grade)
+     */
+    public function getTaskSubmissions(Request $request, int $taskId)
+{
+    $this->assertOwnsTask($request, $taskId);
+
+    $task = DB::table('project_tasks')->where('id', $taskId)
+        ->first(['id','project_id','title','deadline','description']);
+    if (!$task) return response()->json(['message' => 'Task not found'], 404);
+
+    $deadline = $task->deadline ? \Carbon\Carbon::parse($task->deadline) : null;
+
+    // ✅ Join directly to users using the student_id stored on task_submissions
+    $rows = DB::table('task_submissions as s')
+        ->join('users as u', 'u.id', '=', 's.student_id')
+        ->where('s.task_id', $taskId)
+        ->orderBy('s.timestamp', 'desc')
+        ->get([
+            's.student_id',
+            'u.name as student_name',
+            's.timestamp as submitted_at',
+            's.grade',
+        ]);
+
+    $submissions = [];
+    foreach ($rows as $r) {
+        $submittedAt = $r->submitted_at ? \Carbon\Carbon::parse($r->submitted_at) : null;
+        $status = 'On time';
+        if ($deadline && $submittedAt && $submittedAt->gt($deadline)) {
+            $status = 'Late';
+        }
+        $submissions[] = [
+            'student_id'   => (int)$r->student_id,
+            'student_name' => $r->student_name,
+            'submitted_at' => $submittedAt ? $submittedAt->timezone('Asia/Gaza')->format('d/m/Y H:i') : null,
+            'status'       => $status,
+            'grade'        => is_null($r->grade) ? null : (float)$r->grade,
+        ];
+    }
+
+    $title = $task->title ?: ('Task ' . $task->id);
+
+    return response()->json([
+        'task' => [
+            'id'    => (int)$task->id,
+            'title' => $title,
+        ],
+        'submissions' => $submissions,
+    ]);
+}
+
+    /**
+     * Popup: return student's latest submission (files list + grade) and all comments.
+     */
+    public function getStudentSubmission(Request $request, int $taskId, int $studentId)
+    {
+        $this->assertOwnsTask($request, $taskId);
+
+        $sub = DB::table('task_submissions')
+            ->where('task_id', $taskId)
+            ->where('student_id', $studentId)
+            ->orderBy('timestamp', 'desc')
+            ->first(['file_path', 'grade', 'timestamp']);
+        if (!$sub) {
+            return response()->json([
+                'files' => [],
+                'grade' => null,
+                'submitted_at' => null,
+                'comments' => []
+            ]);
+        }
+
+        // file_path can hold comma-separated paths
+        $files = [];
+        if (!empty($sub->file_path)) {
+            $parts = array_filter(array_map('trim', explode(',', $sub->file_path)));
+            foreach ($parts as $p) {
+                // Prefer Storage::url if using Laravel disks; else fall back to /storage/...
+                $url = null;
+                if (Storage::exists($p)) {
+                    $url = URL::to(Storage::url($p));
+                } else {
+                    $url = URL::to('/storage/' . ltrim($p, '/'));
+                }
+                $files[] = [
+                    'name' => basename($p),
+                    'url'  => $url,
+                ];
+            }
+        }
+
+        $comments = DB::table('comments as c')
+            ->join('users as u', 'u.id', '=', 'c.author_id')
+            ->where('c.task_id', $taskId)
+            ->where('c.student_id', $studentId)
+            ->orderBy('c.timestamp', 'desc')
+            ->get([
+                'u.name as author',
+                'c.timestamp',
+                'c.comment',
+            ])
+            ->map(function($c) {
+                $t = $c->timestamp ? Carbon::parse($c->timestamp, 'UTC')->timezone('Asia/Gaza')->format('d/m/Y H:i') : null;
+                return [
+                    'author' => $c->author,
+                    'time'   => $t,
+                    'text'   => $c->comment,
+                ];
+            });
+
+        return response()->json([
+            'files'        => $files,
+            'grade'        => is_null($sub->grade) ? null : (float)$sub->grade,
+            'submitted_at' => $sub->timestamp ? Carbon::parse($sub->timestamp, 'UTC')->timezone('Asia/Gaza')->format('d/m/Y H:i') : null,
+            'comments'     => $comments,
+        ]);
+    }
+
+    /**
+     * Save/update grade (0..10) for a student's submission on a task.
+     */
+    public function saveStudentGrade(Request $request, int $taskId, int $studentId)
+    {
+        $this->assertOwnsTask($request, $taskId);
+
+        $data = $request->validate([
+            'grade' => 'required|numeric|min:0|max:10',
+        ]);
+
+        $updated = DB::table('task_submissions')
+            ->where('task_id', $taskId)
+            ->where('student_id', $studentId)
+            ->update(['grade' => $data['grade']]);
+
+        if (!$updated) {
+            return response()->json(['message' => 'Submission not found'], 404);
+        }
+
+        return response()->json(['grade' => (float)$data['grade']]);
+    }
+
+    /**
+     * Add a comment on a student's submission (author = supervisor).
+     * Body: { student_id, comment }
+     */
+    public function addComment(Request $request, int $taskId)
+    {
+        $user = $this->assertOwnsTask($request, $taskId);
+
+        $payload = $request->validate([
+            'student_id' => 'required|integer',
+            'comment'    => 'required|string|max:5000',
+        ]);
+
+        $now = Carbon::now('Asia/Gaza');
+        DB::table('comments')->insert([
+            'task_id'    => $taskId,
+            'student_id' => $payload['student_id'],
+            'author_id'  => $user->id,
+            'timestamp'  => $now,      // stored in Palestine time
+            'comment'    => $payload['comment'],
+        ]);
+
+        // Return the rendered comment (author name + formatted time)
+        return response()->json([
+            'author' => $user->name,
+            'time'   => $now->format('d/m/Y H:i'),
+            'text'   => $payload['comment'],
+        ], 201);
+    }
+
+public function getCommentsForStudent(Request $request, int $taskId, int $studentId)
+{
+    $this->assertOwnsTask($request, $taskId);
+
+    $rows = DB::table('comments as c')
+        ->join('users as u', 'u.id', '=', 'c.author_id')
+        ->where('c.task_id', $taskId)
+        ->where('c.student_id', $studentId)
+        ->orderByDesc('c.timestamp')
+        ->get([
+            'u.name as author',
+            'c.timestamp',
+            'c.comment',
+        ]);
+
+    $comments = $rows->map(function ($r) {
+        $t = $r->timestamp
+            ? Carbon::parse($r->timestamp, 'UTC')->timezone('Asia/Gaza')->format('d/m/Y H:i')
+            : null;
+        return ['author' => $r->author, 'time' => $t, 'text' => $r->comment];
+    });
+
+    return response()->json(['comments' => $comments]);
+}
+
+
 
     
 }
