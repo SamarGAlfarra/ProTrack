@@ -128,7 +128,7 @@ const SupervisorDashboard = () => {
 
         <h3 className="section-title">Incoming Requests</h3>
 
-        <div className="table-wrapper" ref={tableRef}>
+        <div className="table-wrapper max-10-rows nice-scroll" ref={tableRef}>
           <table className="requests-table">
             <thead>
               <tr>

@@ -1020,4 +1020,54 @@ public function projectDetails(Request $request, $projectId)
         return response()->json(['comment' => $comment], 201);
     }
 
+    public function taskDetails(Request $request, int $taskId)
+{
+    $user = $request->user();
+    if (!$user || $user->role !== 'student') {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    $task = \DB::table('project_tasks')
+        ->where('id', $taskId)
+        ->first(['id','project_id','title','deadline','description','file']);
+
+    if (!$task) {
+        return response()->json(['message' => 'Task not found'], 404);
+    }
+
+    // ✅ Permission: the student must belong to a team that holds this project (reserved/approved)
+    $allowed = \DB::table('team_members as tm')
+        ->join('team_applications as ta', 'ta.team_id', '=', 'tm.team_id')
+        ->where('tm.student_id', $user->id)
+        ->where('ta.project_id', $task->project_id)
+        ->whereIn(\DB::raw('LOWER(ta.status)'), ['reserved','approved'])
+        ->exists();
+
+    if (!$allowed) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
+
+    $deadlineGaza = $task->deadline
+        ? \Carbon\Carbon::parse($task->deadline)->timezone('Asia/Gaza')
+        : null;
+
+    $fileUrl  = null;
+    $fileName = null;
+    if (!empty($task->file)) {
+        $fileUrl  = \Storage::disk('public')->url($task->file);
+        $fileName = basename($task->file);
+    }
+
+    return response()->json([
+        'id'               => (int)$task->id,
+        'project_id'       => (int)$task->project_id,
+        'title'            => $task->title,
+        'description'      => $task->description,
+        'deadline_str'     => $deadlineGaza ? $deadlineGaza->format('d/m/Y H:i') : null,
+        'file_name'        => $fileName,
+        'file_url'         => $fileUrl,
+    ]);
+}
+
+
 }

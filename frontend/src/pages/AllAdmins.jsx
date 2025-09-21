@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './Admin.css';
 import AdminSidebar from '../components/AdminSideBar';
-import editIcon from '../assets/edit.png';
-import peopleIcon from '../assets/delete.png';
 import closeIcon from '../assets/xbutton.png';
 import searchIcon from '../assets/search.png';
 import logoutIcon from '../assets/logout.png';
@@ -155,7 +153,7 @@ const AllAdmins = () => {
           <button className="add-admin-btn" onClick={() => setShowPopup(true)}>Add Admin</button>
         </div>
 
-        <div className="table-wrapper" ref={tableRef}>
+        <div className="table-wrapper max-10-rows nice-scroll" ref={tableRef}>
           <table className="admins-table">
             <thead>
               <tr>
@@ -224,7 +222,6 @@ const AllAdmins = () => {
                     </span>
                   )}
                 </th>
-                <th>Actions</th>
               </tr>
             </thead>
 
@@ -241,10 +238,6 @@ const AllAdmins = () => {
                     <td>{admin.adminId}</td>
                     <td>{admin.department || '—'}</td>
                     <td>{admin.role}</td>
-                    <td className="action-icons">
-                      <img src={editIcon} alt="Edit" className="action-icon" />
-                      <img src={peopleIcon} alt="Delete" className="action-icon" />
-                    </td>
                   </tr>
                 ))
               )}

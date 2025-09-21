@@ -79,6 +79,67 @@ const ProjectDetails = () => {
     }
   };
 
+  const [isEditing, setIsEditing] = useState(false);
+const [activeTaskId, setActiveTaskId] = useState(null);
+const [existingFile, setExistingFile] = useState(null); // {name, url} | null
+const openEditTask = async (taskId) => {
+  try {
+    setIsEditing(true);
+    setActiveTaskId(taskId);
+    setShowPopup(true);
+    setShowCalendar(false);
+
+    const { data } = await axios.get(`/supervisor/tasks/${taskId}`);
+
+    setTaskTitle(data.title || "");
+    setSubject(data.description || "");
+    // show as "DD/MM/YYYY HH:mm" like your add flow expects
+    setDeadline(data.deadline_display || "");
+    setExistingFile(
+      data.file_url ? { name: data.file_name, url: data.file_url } : null
+    );
+    setFile([]); // user may choose a replacement
+  } catch (e) {
+    console.error(e);
+  }
+};
+const handleUpdateTask = async () => {
+  if (!activeTaskId) return;
+  if (!taskTitle.trim() || !formattedDeadlineISO) return;
+
+  try {
+    const form = new FormData();
+    form.append("title", taskTitle.trim());
+    form.append("deadline", formattedDeadlineISO);
+    form.append("description", subject || "");
+    if (file.length > 0) {
+      form.append("attachments[]", file[0]); // replace with first file
+    }
+
+    const { data } = await axios.post(
+      `/supervisor/tasks/${activeTaskId}`,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+
+    setTasks(data.tasks);
+
+    // reset
+    setIsEditing(false);
+    setActiveTaskId(null);
+    setTaskTitle("");
+    setDeadline("");
+    setSubject("");
+    setFile([]);
+    setExistingFile(null);
+    setShowCalendar(false);
+    setShowPopup(false);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+
   // ---- calendar helpers ----
   const handleDateTimeSelect = (date) => {
     const formatted = date
@@ -225,6 +286,15 @@ const ProjectDetails = () => {
                 >
                   <div className="task-left">
                     <p className="task-title">{t.title}</p>
+                    <button
+                    className="task-edit-link"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditTask(t.id);
+                    }}
+                  >
+                    Edit
+                  </button>
                   </div>
                   <div className="task-right">
                     <p className="task-status">Status: {t.status}</p>
@@ -241,7 +311,7 @@ const ProjectDetails = () => {
           <div className="popup-overlay">
             <div className="popup-box">
               <div className="popup-header">
-                <h3>Add Task</h3>
+                <h3>{isEditing ? "Edit Task" : "Add Task"}</h3>
                 <img
                   src={closeIcon}
                   alt="Close"
@@ -249,6 +319,9 @@ const ProjectDetails = () => {
                   onClick={() => {
                     setShowPopup(false);
                     setShowCalendar(false);
+                    setIsEditing(false);
+                    setActiveTaskId(null);
+                    setExistingFile(null);
                   }}
                 />
               </div>
@@ -295,6 +368,8 @@ const ProjectDetails = () => {
                   className="popup-textarea"
                 />
 
+                
+
                 <input
                   type="file"
                   multiple
@@ -309,8 +384,17 @@ const ProjectDetails = () => {
                   </ul>
                 )}
 
-                <button className="popup-save" onClick={handleSaveTask}>
-                  Save
+                {isEditing && existingFile && (
+                  <div className="popup-existing-file">
+                    Current file: <a href={existingFile.url} target="_blank" rel="noreferrer">{existingFile.name}</a>
+                  </div>
+                )}
+
+                <button
+                  className="popup-save"
+                  onClick={isEditing ? handleUpdateTask : handleSaveTask}
+                >
+                  {isEditing ? "Update" : "Save"}
                 </button>
               </div>
             </div>

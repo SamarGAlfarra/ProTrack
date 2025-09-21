@@ -67,12 +67,16 @@ html, body {
 }
 
 /* Table */
+
+:root { --row-h: 48px; } /* matches your th,td height */
+
+/* unify table-wrapper once (you have duplicates); keep overflow-x if needed */
 .table-wrapper {
-  overflow-x: auto;
+  width: 100%;
+  overflow-x: auto;  /* horizontal if needed */
+  background-color: #F5F7F8;
   border: 2px solid #001D3D;
   border-radius: 10px;
-  max-width: 100%;
-  background-color: #F5F7F8;
 }
 
 table {
@@ -728,5 +732,72 @@ th {
   cursor: pointer;
   margin: 0 20px;
 }
+
+:root { --row-h: 48px; } /* matches your th,td height */
+
+/* unify table-wrapper once (you have duplicates); keep overflow-x if needed */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;  /* horizontal if needed */
+  background-color: #F5F7F8;
+  border: 2px solid #001D3D;
+  border-radius: 10px;
+}
+
+/* limit to 10 data rows + 1 header row */
+.table-wrapper.max-10-rows {
+  max-height: calc(var(--row-h) * 11); /* 10 rows + header */
+  overflow-y: auto;                     /* vertical scroll appears after 10 rows */
+  overflow-x: auto;  /* horizontal if needed */
+
+}
+
+/* keep header visible while scrolling */
+.admins-table thead th {
+  position: sticky;
+  top: 0;
+  background: #F5F7F8;
+  z-index: 2;
+}
+
+.table-wrapper.max-10-rows thead th {
+  position: sticky;
+  top: 0;
+  background: #f5f7f8; /* same as your header color */
+  z-index: 2;
+}
+
+/* Reusable thin, rounded scrollbar (Chrome/Edge/Safari + Firefox) */
+.nice-scroll {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #bfbfbf transparent;
+
+  /* Reserve space for the bar so content doesn’t jump */
+  scrollbar-gutter: stable both-edges;
+}
+
+/* WebKit browsers */
+.nice-scroll::-webkit-scrollbar {
+  width: 6px;         /* vertical bars */
+  height: 6px;        /* horizontal bars */
+}
+.nice-scroll::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 10px;
+}
+.nice-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Optional: add a little inner padding so text doesn't hug the bar */
+.nice-scroll-inner {
+  padding-right: 6px;
+}
+
+.button-myprofile {
+    background-color: #f7c600;
+}
+
 
 

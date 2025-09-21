@@ -302,15 +302,9 @@ const MyProfile = () => {
           <span className="reset-password-link" onClick={() => setShowResetPopup(true)}>
             Reset Password
           </span>
-          <button className="save-btn" onClick={handleSaveBoth} disabled={saving}>
+          <button className="save-btn button-myprofile" onClick={handleSaveBoth} disabled={saving}>
             {saving ? "Saving..." : "Save Changes"}
           </button>
-{/*           <button className="save-btn" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save"}
-          </button>
-          <button className="save-btn" onClick={handleSavePhoto} disabled={!photoFile}>
-            Save Photo
-          </button> */}
           {error && <p className="error">{error}</p>}
         </div>
 

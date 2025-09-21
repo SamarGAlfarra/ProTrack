@@ -85,16 +85,15 @@ const AddProject = () => {
 
     try {
       if (isEditMode) {
-        // await axios.put(`/supervisor/projects/${id}`, form);
-        await axios.post(`/supervisor/projects/${id}`, form); // حسب الراوت لديك
+        await axios.post(`/supervisor/projects/${id}`, form);
         alert("Project updated successfully.");
       } else {
         const { data } = await axios.post("/supervisor/projects", form);
         alert(`Project created. ID = ${data.project_id}`);
       }
     } catch (err) {
-      console.error(err);
-      alert("Failed to save project. Please check console.");
+      const msg = err?.response?.data?.message || 'Failed to save project.';
+      alert(msg);
     }
   };
 

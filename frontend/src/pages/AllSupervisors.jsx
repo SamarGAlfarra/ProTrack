@@ -2,10 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import './Admin.css';
 import AdminSidebar from '../components/AdminSideBar';
 import editIcon from '../assets/edit.png';
-import peopleIcon from '../assets/delete.png';
 import closeIcon from '../assets/xbutton.png';
 import searchIcon from '../assets/search.png';
-import logoutIcon from '../assets/logout.png';
 import axios from '../axios'; // ✅ shared axios instance
 import Department from '../components/Department.jsx'; // ✅ ADDED
 
@@ -187,6 +185,12 @@ const AllSupervisors = () => {
     }
   };
 
+  const [editingId, setEditingId] = useState(null);      // which supervisorId is being edited
+const [editValue, setEditValue] = useState('');        // new quota
+const [savingEdit, setSavingEdit] = useState(false);
+const [editErr, setEditErr] = useState('');
+
+
   return (
     <div className="admin-dashboard">
       <AdminSidebar />
@@ -202,7 +206,7 @@ const AllSupervisors = () => {
           </button>
         </div>
 
-        <div className="table-wrapper" ref={tableRef}>
+        <div className="table-wrapper max-10-rows nice-scroll" ref={tableRef}>
           <table className="admins-table">
             <thead>
               <tr>
@@ -357,10 +361,74 @@ const AllSupervisors = () => {
                     <td>{sup.degree}</td>
                     <td>{sup.department}</td>
                     <td>{sup.role}</td>
-                    <td>{sup.projects}</td>
+                    <td>
+                    {editingId === sup.supervisorId ? (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input
+                          type="number"
+                          min={1}
+                          className="column-edit"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          style={{ width: 80 }}
+                        />
+                        <button
+                          disabled={savingEdit}
+                          onClick={async () => {
+                            setEditErr('');
+                            const val = parseInt(editValue, 10);
+                            if (Number.isNaN(val) || val < 1) {
+                              setEditErr('Enter a positive number.');
+                              return;
+                            }
+                            try {
+                              setSavingEdit(true);
+                              const { data } = await axios.patch(
+                                `/admin/supervisors/${sup.supervisorId}/projects-limit`,
+                                { projects_no_limit: val }
+                              );
+
+                              // Update the table row in-place
+                              setSupervisors((prev) =>
+                                prev.map((r) =>
+                                  r.supervisorId === sup.supervisorId ? { ...r, ...data } : r
+                                )
+                              );
+
+                              setEditingId(null);
+                            } catch (err) {
+                              setEditErr(err?.response?.data?.message || 'Failed to save.');
+                            } finally {
+                              setSavingEdit(false);
+                            }
+                          }}
+                          className="small-btn"
+                        >
+                          {savingEdit ? 'Saving…' : 'Save'}
+                        </button>
+                        <button
+                          className="small-btn secondary"
+                          onClick={() => setEditingId(null)}
+                        >
+                          Cancel
+                        </button>
+                        {editErr && <span style={{ color: 'red', fontSize: 12 }}>{editErr}</span>}
+                      </div>
+                    ) : (
+                      sup.projects
+                    )}
+                  </td>
                     <td className="action-icons">
-                      <img src={editIcon} alt="Edit" className="action-icon" />
-                      <img src={peopleIcon} alt="Delete" className="action-icon" />
+                      <img
+                        src={editIcon}
+                        alt="Edit"
+                        className="action-icon"
+                        onClick={() => {
+                          setEditingId(sup.supervisorId);
+                          setEditValue(String(sup.projects ?? '')); // prefill current value
+                          setEditErr('');
+                        }}
+                      />
                     </td>
                   </tr>
                 ))

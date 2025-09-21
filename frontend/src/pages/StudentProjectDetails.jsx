@@ -4,28 +4,50 @@ import StudentSideBar from "../components/StudentSideBar";
 import axios from "../axios";
 import "./ProjectDetails.css";
 
+const STORAGE_BASE = "http://127.0.0.1:8000/storage/";
+
+// Build absolute storage URL and encode segments
+function buildStorageUrl(p) {
+  if (!p) return "#";
+  const cleaned = String(p).replace(/^\/+/, ""); // trim leading /
+  const encoded = cleaned
+    .split("/")
+    .map((seg) => encodeURIComponent(seg))
+    .join("/");
+  return STORAGE_BASE + encoded;
+}
+
+function fileNameFromPath(p) {
+  if (!p) return "file";
+  return String(p).split("/").pop() || "file";
+}
+
 const StudentProjectDetails = () => {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [project, setProject] = useState(null);
 
-  const load = async () => {
-    setLoading(true);
-    setErr("");
-    try {
-      const { data } = await axios.get(`/student/projects/${id}`);
-      setProject(data.project || null);
-    } catch (e) {
-      setErr(e?.response?.data?.message || "Failed to load project details.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    load();
+    (async () => {
+      try {
+        setLoading(true);
+        setErr("");
+        const { data } = await axios.get(`/student/projects/${id}`);
+        setProject(data.project || null);
+      } catch (e) {
+        setErr(e?.response?.data?.message || "Failed to load project details.");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [id]);
+
+  // Hard-open in a new tab (bypasses any router hijack)
+  const openExternal = (url) => {
+    // window.open guarantees navigation to exact URL
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   if (loading) {
     return (
@@ -73,22 +95,6 @@ const StudentProjectDetails = () => {
         <div className="summary-box">
           <p className="summary-title">Project Summary</p>
           <div className="summary-text">{project.summary || "—"}</div>
-        </div>
-
-        <div className="files-section">
-          {(project.files || []).map((f, idx) => (
-            <p key={idx}>
-              📄{" "}
-              {f.url ? (
-                <a href={f.url} target="_blank" rel="noreferrer">
-                  {f.name}
-                </a>
-              ) : (
-                f.name
-              )}
-            </p>
-          ))}
-          {(!project.files || project.files.length === 0) && <p>—</p>}
         </div>
       </div>
     </div>

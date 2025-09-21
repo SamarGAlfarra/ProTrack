@@ -102,9 +102,29 @@ const MyProjectsStudent = () => {
   };
 
   // ---------- Tasks / popups ----------
-  const handleTaskClick = (task) => {
-    setSelectedTask(task);
+  const handleTaskClick = async (task) => {
     setShowPopup(true);
+    setSelectedTask(task);
+
+    try {
+      // fetch details that include an absolute file URL (same idea as supervisor)
+      const { data } = await axios.get(`/student/tasks/${task.id}`);
+      const resolvedFiles = [];
+
+      if (Array.isArray(data?.files) && data.files.length > 0) {
+        data.files.forEach((f) => {
+          if (f?.url) resolvedFiles.push({ name: f.name || "File", url: f.url });
+        });
+      } else if (data?.file_url) {
+        resolvedFiles.push({ name: data.file_name || "File", url: data.file_url });
+      }
+
+      setSelectedTask((prev) =>
+        prev && prev.id === task.id ? { ...prev, resolvedFiles } : prev
+      );
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Load submission + comments when opening submission modal
@@ -145,19 +165,15 @@ const MyProjectsStudent = () => {
       selectedFiles.forEach((f) => form.append("files[]", f));
 
       if (submission) {
-        // Update existing (allowed only before deadline; backend enforces)
         await axios.post(
           `/student/tasks/${selectedTask.id}/submission/update`,
           form,
           { headers: { "Content-Type": "multipart/form-data" } }
         );
       } else {
-        // Create new
-        await axios.post(
-          `/student/tasks/${selectedTask.id}/submission`,
-          form,
-          { headers: { "Content-Type": "multipart/form-data" } }
-        );
+        await axios.post(`/student/tasks/${selectedTask.id}/submission`, form, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       }
 
       // Refresh submission + tasks
@@ -193,6 +209,36 @@ const MyProjectsStudent = () => {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  // ---------- File URL helpers ----------
+  // Resolve the backend origin correctly
+  const BACKEND_ORIGIN = (() => {
+    const envOrigin = import.meta?.env?.VITE_BACKEND_ORIGIN;
+    if (envOrigin && /^https?:\/\//i.test(envOrigin)) {
+      return envOrigin.replace(/\/+$/, "");
+    }
+
+    const b = axios?.defaults?.baseURL || "";
+    try {
+      if (/^https?:\/\//i.test(b)) return new URL(b).origin;
+    } catch {}
+
+    // Dev fallback so /storage opens on Laravel (8000) not Vite (5174)
+    if (window.location.port === "5174" || window.location.port === "5173") {
+      return "http://localhost:8000";
+    }
+
+    // Production (Laravel serves SPA)
+    return window.location.origin;
+  })();
+
+  const toAbsoluteUrl = (p) => {
+    if (!p) return "#";
+    if (/^https?:\/\//i.test(p)) return p; // already absolute
+    let path = String(p).replace(/^\/+/, "");
+    if (!/^storage\//i.test(path)) path = `storage/${path}`;
+    return `${BACKEND_ORIGIN}/${path}`;
   };
 
   // ---------- UI ----------
@@ -287,10 +333,7 @@ const MyProjectsStudent = () => {
                 {tasks.map((t) => (
                   <tr key={t.id}>
                     <td
-                      onClick={() => {
-                        setSelectedTask(t);
-                        setShowPopup(true);
-                      }}
+                      onClick={() => handleTaskClick(t)}
                       style={{ textDecoration: "underline", cursor: "pointer" }}
                     >
                       {t.title}
@@ -347,7 +390,45 @@ const MyProjectsStudent = () => {
               </div>
 
               <div className="files-section">
-                {selectedTask.file ? <p>📄 {selectedTask.file}</p> : <p>—</p>}
+                {Array.isArray(selectedTask?.resolvedFiles) &&
+                selectedTask.resolvedFiles.length > 0 ? (
+                  selectedTask.resolvedFiles.map((f, i) => (
+                    <div key={i}>
+                      <a href={f.url} target="_blank" rel="noreferrer">
+                        📄 {f.name || `File ${i + 1}`}
+                      </a>
+                    </div>
+                  ))
+                ) : Array.isArray(selectedTask?.files) &&
+                  selectedTask.files.length > 0 ? (
+                  selectedTask.files.map((fp, i) => (
+                    <div key={i}>
+                      <a
+                        href={toAbsoluteUrl(fp)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        📄 {fp?.split("/").pop() || `File ${i + 1}`}
+                      </a>
+                    </div>
+                  ))
+                ) : selectedTask?.file ? (
+                  String(selectedTask.file)
+                    .split(",")
+                    .map((fp, i) => (
+                      <div key={i}>
+                        <a
+                          href={toAbsoluteUrl(fp)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          📄 {fp?.split("/").pop() || `File ${i + 1}`}
+                        </a>
+                      </div>
+                    ))
+                ) : (
+                  <p>—</p>
+                )}
               </div>
 
               <button
@@ -384,7 +465,9 @@ const MyProjectsStudent = () => {
                 Your work
               </h3>
               <span className="grade-score">
-                {submission?.grade != null ? `Graded: ${submission.grade}/10` : "Graded: --/10"}
+                {submission?.grade != null
+                  ? `Graded: ${submission.grade}/10`
+                  : "Graded: --/10"}
               </span>
             </div>
 
@@ -392,10 +475,33 @@ const MyProjectsStudent = () => {
             <div className="submission-box" style={{ textAlign: "left" }}>
               <div style={{ marginBottom: 10 }}>
                 <strong>Submitted files: </strong>
-                {submission?.file_path ? (
-                  submission.file_path.split(",").map((p, i) => (
-                    <div key={i}>📄 {p.trim()}</div>
+
+                {Array.isArray(submission?.files) &&
+                submission.files.length > 0 ? (
+                  submission.files.map((f, i) => (
+                    <div key={i}>
+                      <a href={f.url} target="_blank" rel="noreferrer">
+                        📄 {f.name || `File ${i + 1}`}
+                      </a>
+                    </div>
                   ))
+                ) : submission?.file_path ? (
+                  String(submission.file_path)
+                    .split(",")
+                    .map((p, i) => {
+                      const trimmed = p.trim();
+                      return (
+                        <div key={i}>
+                          <a
+                            href={toAbsoluteUrl(trimmed)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            📄 {trimmed.split("/").pop() || `File ${i + 1}`}
+                          </a>
+                        </div>
+                      );
+                    })
                 ) : (
                   <span>—</span>
                 )}

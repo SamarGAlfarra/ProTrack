@@ -58,6 +58,25 @@ const MyProjects = () => {
     return matchSubject && matchStatus;
   });
 
+  const handleDelete = async (project) => {
+    // UX: block immediately if reserved
+    if (String(project.status) === 'Reserved') {
+      alert('This project is reserved by a team and cannot be deleted.');
+      return;
+    }
+
+    if (!window.confirm(`Delete "${project.title}"? This cannot be undone.`)) return;
+
+    try {
+      await axios.delete(`/supervisor/projects/${project.id}`, { withCredentials: true });
+      // remove from UI
+      setServerProjects((prev) => prev.filter((p) => p.id !== project.id));
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to delete project.';
+      alert(msg);
+    }
+  };
+
   return (
     <div className="supervisor-dashboard">
       <SupervisorSideBar />
@@ -102,10 +121,7 @@ const MyProjects = () => {
         <div className="project-list">
           {filteredProjects.map((project) => (
             <div className="project-item" key={project.id}>
-              <Link
-                to={`/supervisor/projectdetails/${project.id}`}
-                className="project-title"
-              >
+              <Link to={`/supervisor/projectdetails/${project.id}`} className="project-title">
                 {project.title}
               </Link>
 
@@ -117,7 +133,14 @@ const MyProjects = () => {
                 <img src={editIcon} alt="Edit" className="icon-button" />
               </Link>
 
-              <img src={trashIcon} alt="Delete" className="icon-button" />
+              <img
+                src={trashIcon}
+                alt="Delete"
+                className="icon-button"
+                onClick={() => handleDelete(project)}
+                title="Delete project"
+                style={{ cursor: 'pointer' }}
+              />
             </div>
           ))}
         </div>

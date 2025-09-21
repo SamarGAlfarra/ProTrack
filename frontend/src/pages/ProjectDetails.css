@@ -669,3 +669,28 @@
   padding: 0 0 20px 0;
   text-decoration: none;
 }
+
+.task-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-edit-link {
+  background: none;
+  border: none;
+  font-size: 12px;
+  text-decoration: underline;
+  color: #003566;
+  cursor: pointer;
+  padding: 0;
+}
+
+.task-edit-link:hover {
+  color: #001d3d;
+}
+
+.popup-existing-file {
+  font-size: 13px;
+}
+

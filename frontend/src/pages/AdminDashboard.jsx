@@ -254,7 +254,7 @@ const AdminDashboard = () => {
 
         <h3 className="section-title">Incoming Sign Up Requests</h3>
 
-        <div className="table-wrapper" ref={tableRef}>
+        <div className="table-wrapper max-10-rows nice-scroll" ref={tableRef}>
           {loading ? (
             <div>Loading...</div>
           ) : error ? (

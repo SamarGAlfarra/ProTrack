@@ -147,8 +147,13 @@ Route::middleware('auth:api')->group(function () {
     // Supervisor – incoming team applications
     Route::get('/supervisor/incoming-requests', [SupervisorController::class, 'incomingRequests']);
     Route::get('/supervisor/team/{teamId}/members', [SupervisorController::class, 'teamMembers']);
-
-    
+    Route::delete('/supervisor/projects/{projectId}', [SupervisorController::class, 'destroy']); 
+    Route::get('/supervisor/tasks/{taskId}',  [SupervisorController::class, 'getTask']);
+    Route::post('/supervisor/tasks/{taskId}', [SupervisorController::class, 'updateTask']);
+    Route::patch(
+        '/admin/supervisors/{supervisorId}/projects-limit',
+        [AdminController::class, 'updateSupervisorProjectsLimit']
+    )->whereNumber('supervisorId');
      Route::patch(
         '/supervisor/team-applications/{teamId}/{projectId}',
         [SupervisorController::class, 'updateTeamApplicationStatus']
@@ -171,6 +176,9 @@ Route::middleware('auth:api')->group(function () {
     // Project details (for StudentProjectDetails page)
     Route::get('/student/projects/{id}', [StudentController::class, 'projectDetails'])
         ->whereNumber('id');
+
+    Route::get('/student/tasks/{task}/details', [StudentController::class, 'taskDetails'])
+        ->whereNumber('task');
 
 });
 

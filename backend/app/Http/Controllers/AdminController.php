@@ -432,14 +432,48 @@ public function listApprovedStudents(Request $request)
         });
     }
 
-    // app/Http/Controllers/AdminController.php
+    public function updateSupervisorProjectsLimit(Request $request, int $supervisorId)
+{
+    // extra safety: must be admin
+    $user = $request->user();
+    if (!$user || $user->role !== 'admin') {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
 
+    // validate the only field we allow to change
+    $data = $request->validate([
+        'projects_no_limit' => ['required', 'integer', 'min:1', 'max:50'],
+    ]);
+
+    // make sure supervisor exists
+    $exists = \DB::table('supervisors')->where('supervisor_id', $supervisorId)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Supervisor not found'], 404);
+    }
+
+    // update the quota
+    \DB::table('supervisors')
+        ->where('supervisor_id', $supervisorId)
+        ->update(['projects_no_limit' => $data['projects_no_limit']]);
+
+    // return a row in the SAME shape your table expects
+    // (adjust select aliases to match your frontend keys)
+    $row = \DB::table('supervisors as s')
+        ->join('users as u', 'u.id', '=', 's.supervisor_id')
+        ->leftJoin('departments as d', 'd.id', '=', 'u.department')
+        ->where('s.supervisor_id', $supervisorId)
+        ->selectRaw('
+            u.name                     as name,
+            s.supervisor_id            as supervisorId,
+            s.educational_degree       as degree,
+            COALESCE(d.name, "N/A")    as department,
+            u.role                     as role,
+            s.projects_no_limit        as projects
+        ')
+        ->first();
+
+    return response()->json($row);
 }
 
 
-
-
-
-
-
-
+}

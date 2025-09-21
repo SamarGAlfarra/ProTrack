@@ -151,7 +151,7 @@ protected function saveUploadedFiles(Request $request, string $projectId): array
     public function store(Request $request)
     {
         $user = $request->user();
-        if (!$user) abort(401);
+        if (!$user || $user->role !== 'supervisor') abort(401);
 
         $validated = $request->validate([
             'title'        => ['required', 'string', 'max:255'],
@@ -162,12 +162,48 @@ protected function saveUploadedFiles(Request $request, string $projectId): array
             'files.*'      => ['file', 'max:8192'],
         ]);
 
+        // current semester (throws 409 if not set)
+        $semesterId = $this->currentSemesterId();
+
+        // 🔒 1) Ensure project title is unique (case-insensitive) within this semester
+        $title = trim($validated['title']);
+        $exists = \DB::table('projects')
+            ->where('semester_id', $semesterId)
+            ->whereRaw('LOWER(title) = ?', [mb_strtolower($title)])
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'message' => 'A project with this name already exists in the current semester.'
+            ], 422); // Unprocessable Entity
+        }
+
+        // 🔒 2) Enforce supervisor’s max number of projects for this semester
+        $sup = \DB::table('supervisors')->where('supervisor_id', $user->id)->first();
+        $max = $sup ? (int)($sup->projects_no_limit ?? 0) : 0;   // e.g., 0 means no projects allowed
+        if ($max <= 0) {
+            return response()->json([
+                'message' => 'You are not allowed to create projects for the current semester.'
+            ], 409);
+        }
+
+        $currentCount = \DB::table('projects')
+            ->where('supervisor_id', $user->id)
+            ->where('semester_id', $semesterId)
+            ->count();
+
+        if ($currentCount >= $max) {
+            return response()->json([
+                'message' => "You reached your limit ({$max}) for projects this semester."
+            ], 409); // Conflict
+        }
+
+        // === proceed as before ===
         $projectId = $this->nextProjectIdForSupervisor($user);
 
         $paths = $this->saveUploadedFiles($request, $projectId);
         $fileCsv = empty($paths) ? null : implode(',', $paths);
 
-        // ✅ DATETIME صالح
         $meetingTime = $this->composeMeetingDateTime(
             $validated['meeting_day'] ?? null,
             $validated['start_time'] ?? null
@@ -176,14 +212,13 @@ protected function saveUploadedFiles(Request $request, string $projectId): array
         $project = new Project();
         $project->project_id    = $projectId;
         $project->supervisor_id = $user->id;
-        $project->title         = $validated['title'];
-        $project->meeting_time  = $meetingTime; // DATETIME أو NULL
+        $project->title         = $title;
+        $project->meeting_time  = $meetingTime;
         $project->meeting_link  = $validated['meeting_link'] ?? null;
         $project->summary       = $validated['summary'] ?? null;
         $project->file_path     = $fileCsv;
-        $project->semester_id   = $this->currentSemesterId();
+        $project->semester_id   = $semesterId;
         $project->number        = 1;
-
         $project->save();
 
         return response()->json([
@@ -193,10 +228,11 @@ protected function saveUploadedFiles(Request $request, string $projectId): array
         ], 201);
     }
 
+
     public function update(Request $request, string $projectId)
     {
         $user = $request->user();
-        if (!$user) abort(401);
+        if (!$user || $user->role !== 'supervisor') abort(401);
 
         $project = Project::where('project_id', $projectId)
             ->where('supervisor_id', $user->id)
@@ -211,7 +247,23 @@ protected function saveUploadedFiles(Request $request, string $projectId): array
             'files.*'      => ['file', 'max:8192'],
         ]);
 
-        if (array_key_exists('title', $validated))        $project->title        = $validated['title'];
+        // 🔒 If title is changing, ensure uniqueness within the same semester
+        if (array_key_exists('title', $validated)) {
+            $newTitle = trim($validated['title']);
+            $exists = \DB::table('projects')
+                ->where('semester_id', $project->semester_id)
+                ->whereRaw('LOWER(title) = ?', [mb_strtolower($newTitle)])
+                ->where('project_id', '<>', $project->project_id)
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'message' => 'A project with this name already exists in the current semester.'
+                ], 422);
+            }
+
+            $project->title = $newTitle;
+        }
         if (array_key_exists('meeting_link', $validated)) $project->meeting_link = $validated['meeting_link'];
         if (array_key_exists('summary', $validated))      $project->summary      = $validated['summary'];
 
@@ -1048,7 +1100,176 @@ public function getCommentsForStudent(Request $request, int $taskId, int $studen
     return response()->json(['comments' => $comments]);
 }
 
+public function destroy(Request $request, string $projectId)
+{
+    $user = $request->user();
+    if (!$user || $user->role !== 'supervisor') {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
 
+    $project = DB::table('projects')
+        ->where('project_id', $projectId)
+        ->where('supervisor_id', $user->id)
+        ->first();
+
+    if (!$project) {
+        return response()->json(['message' => 'Not found'], 404);
+    }
+
+    // Block delete if reserved/approved
+    $reserved = DB::table('team_applications')
+        ->where('project_id', $projectId)
+        ->whereIn(DB::raw('LOWER(status)'), ['reserved', 'approved'])
+        ->exists();
+
+    if ($reserved) {
+        return response()->json([
+            'message' => 'This project is reserved by a team and cannot be deleted.'
+        ], 409);
+    }
+
+    DB::transaction(function () use ($projectId) {
+        // collect task ids to delete related data
+        $taskIds = DB::table('project_tasks')->where('project_id', $projectId)->pluck('id');
+
+        DB::table('comments')->whereIn('task_id', $taskIds)->delete();
+        DB::table('task_submissions')->whereIn('task_id', $taskIds)->delete();
+        DB::table('project_tasks')->where('project_id', $projectId)->delete();
+        DB::table('project_posts')->where('project_id', $projectId)->delete();
+        DB::table('team_applications')->where('project_id', $projectId)->delete();
+
+        DB::table('projects')->where('project_id', $projectId)->delete();
+
+        // optional: remove stored files
+        Storage::disk('public')->deleteDirectory("projects/{$projectId}");
+        Storage::disk('public')->deleteDirectory("project_tasks/{$projectId}");
+    });
+
+    return response()->json(['ok' => true]);
+}
+
+
+public function getTask(Request $request, int $taskId)
+{
+    $this->assertOwnsTask($request, $taskId);
+
+    $task = \DB::table('project_tasks')
+        ->where('id', $taskId)
+        ->first(['id','project_id','title','deadline','description','file']);
+
+    if (!$task) return response()->json(['message' => 'Task not found'], 404);
+
+    $deadlineGaza = $task->deadline ? \Carbon\Carbon::parse($task->deadline)->timezone('Asia/Gaza') : null;
+
+    $fileUrl = null;
+    $fileName = null;
+    if (!empty($task->file)) {
+        $fileUrl  = \Storage::disk('public')->url($task->file);
+        $fileName = basename($task->file);
+    }
+
+    return response()->json([
+        'id'               => (int)$task->id,
+        'project_id'       => (int)$task->project_id,
+        'title'            => $task->title,
+        'description'      => $task->description,
+        'deadline_display' => $deadlineGaza ? $deadlineGaza->format('d/m/Y H:i') : null,
+        'deadline_iso'     => $deadlineGaza ? $deadlineGaza->format('Y-m-d\TH:i') : null,
+        'file_name'        => $fileName,
+        'file_url'         => $fileUrl,
+    ]);
+}
+
+public function updateTask(Request $request, int $taskId)
+{
+    $this->assertOwnsTask($request, $taskId);
+
+    $task = \DB::table('project_tasks')
+        ->where('id', $taskId)
+        ->first(['id','project_id','file']);
+    if (!$task) return response()->json(['message' => 'Task not found'], 404);
+
+    $validated = $request->validate([
+        'title'         => ['sometimes','string','max:255'],
+        'deadline'      => ['sometimes','date'],   // e.g. 2025-03-20T13:00
+        'description'   => ['sometimes','nullable','string'],
+        'attachments.*' => ['file','max:20480'],   // first file only will be saved
+    ]);
+
+    $update = [];
+
+    if (array_key_exists('title', $validated)) {
+        $update['title'] = trim($validated['title']);
+    }
+
+    if (array_key_exists('deadline', $validated)) {
+        // convert incoming ISO to UTC (DB keeps DATETIME)
+        $update['deadline'] = \Carbon\Carbon::parse(str_replace('T',' ', $validated['deadline']))->timezone('UTC');
+    }
+
+    if (array_key_exists('description', $validated)) {
+        $update['description'] = $validated['description'];
+    }
+
+    // Replace file if new one provided (use only the first)
+    if ($request->hasFile('attachments') && count($request->file('attachments')) > 0) {
+        $first = $request->file('attachments')[0];
+
+        // optional cleanup old file
+        if (!empty($task->file)) {
+            \Storage::disk('public')->delete($task->file);
+        }
+
+        $storedPath = $first->store("project_tasks/{$task->project_id}/{$task->id}", 'public');
+        if (strlen($storedPath) > 255) $storedPath = substr($storedPath, 0, 255);
+
+        $update['file'] = $storedPath;
+    }
+
+    if (!empty($update)) {
+        \DB::table('project_tasks')->where('id', $taskId)->update($update);
+    }
+
+    // Return refreshed tasks list (same formatting as elsewhere)
+    $taskRows = \DB::table('project_tasks')
+        ->where('project_id', $task->project_id)
+        ->orderBy('deadline', 'asc')
+        ->select('id','title','deadline')
+        ->get();
+
+    // Get team members to compute status like your existing method
+    $teamApp = \DB::table('team_applications')
+        ->where('project_id', $task->project_id)
+        ->whereRaw('LOWER(status) IN (?, ?)', ['reserved','approved'])
+        ->first();
+
+    $memberIds = [];
+    if ($teamApp) {
+        $memberIds = \DB::table('team_members')
+            ->where('team_id', $teamApp->team_id)
+            ->pluck('student_id')->map(fn($x)=>(int)$x)->all();
+    }
+    $memberCount = count($memberIds);
+
+    $tasks = [];
+    foreach ($taskRows as $t) {
+        $subsQ = \DB::table('task_submissions')->where('task_id', $t->id);
+        if ($memberCount > 0) $subsQ->whereIn('student_id', $memberIds);
+        $subs = $subsQ->selectRaw('COUNT(*) AS total_subs, SUM(CASE WHEN grade IS NULL THEN 1 ELSE 0 END) AS not_graded')->first();
+
+        $status = 'Not graded';
+        if ($subs && (int)$subs->total_subs > 0 && (int)$subs->not_graded === 0) $status = 'Graded';
+
+        $tasks[] = [
+            'id'           => (string)$t->id,
+            'title'        => $t->title,
+            'deadline_str' => \Carbon\Carbon::parse($t->deadline)->timezone('Asia/Gaza')->format('d/m/Y H:i'),
+            'status'       => $status,
+        ];
+    }
+
+    return response()->json(['tasks' => $tasks]);
+}
 
     
 }

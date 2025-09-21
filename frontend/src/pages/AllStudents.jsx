@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './Admin.css';
 import AdminSidebar from '../components/AdminSideBar';
-import peopleIcon from '../assets/delete.png';
 import closeIcon from '../assets/xbutton.png';
 import searchIcon from '../assets/search.png';
 import axios from '../axios'; // ✅ uses your configured axios instance
@@ -189,7 +188,7 @@ const AllStudents = () => {
           </button>
         </div>
 
-        <div className="table-wrapper" ref={tableRef}>
+        <div className="table-wrapper max-10-rows nice-scroll" ref={tableRef}>
           <table className="admins-table">
             <thead>
               <tr>
@@ -304,8 +303,6 @@ const AllStudents = () => {
                     </span>
                   )}
                 </th>
-
-                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -327,9 +324,6 @@ const AllStudents = () => {
                   <td>{student.department || '—'}</td>
                   <td>{student.supervisor_name || '—'}</td>
                   <td>{student.project_id || '—'}</td>
-                  <td className="action-icons">
-                    <img src={peopleIcon} alt="Delete" className="action-icon" />
-                  </td>
                 </tr>
               ))}
             </tbody>
